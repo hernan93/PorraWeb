@@ -1,0 +1,17 @@
+.gradle/
+.kotlin/
+build/
+out/
+.idea/
+*.iml
+
+node_modules/
+kotlin-js-store/
+npm-debug.log*
+yarn-error.log*
+
+.env
+.env.*
+!.env.example
+
+.vercel/

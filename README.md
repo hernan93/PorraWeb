@@ -1,60 +1,110 @@
 # PorraWeb
-App Web para seguimiento de predicciones de al mundial de futbol2026 
 
-El mundial no descansa y el equipo de CEDA tampoco. Si tienes prisa accede al siguiente enlace y rellena como loco la porra (**estará abierta hasta mañana sábado 3 a las 15:59**):
+App web para gestionar una porra privada del Mundial 2026 entre compañeros de equipo.
 
-propon un formulario de como cada participante agregara sus predicciones 
+## Stack actual
 
-Si tienes un poco más de tiempo, te explicamos las normas:
+- Kotlin Multiplatform Web para el frontend.
+- Supabase para base de datos, autenticación del admin y funciones backend.
+- Resend para emails de confirmación.
+- Vercel para deploy.
 
-En esta fase se seguirá el mismo tipo de porra que en la de grupos. Para cada partido se pondrá un resultado con goles que dará los siguientes puntos:
+## Estructura del frontend
 
-- Por acertar el resultado de un partido (sin acierto de goles): + 3 PUNTOS
-- Por acertar el resultado exacto de un partido (con acierto de goles): + 5 PUNTOS
+El frontend esta separado por capas simples para que no quede todo en `Main.kt`:
 
-Para la pregunta obvia aquí tenéis la respuesta: **El resultado del partido se considera con la prórroga incluida** **sin penaltis****.**
+- `domain/model` contiene los modelos de negocio usados por la UI.
+- `domain/repository` define el contrato de datos.
+- `data/mock` contiene datos de prueba en espanol para navegar sin backend.
+- `navigation` contiene las rutas hash de la SPA.
+- `presentation/app` conecta navegacion, estado y pantallas.
+- `presentation/components` contiene componentes reutilizables.
+- `presentation/screens` contiene las vistas principales.
 
-**Para cada fase se indicará el equipo que pasa a la siguiente. En octavos dado que los enfrentamientos están ya decidos habrá 2 opciones por cada partido. En cuartos, como no se sabe aún qué equipos jugarán, las opciones que aparecen son 4, en semis 8 y en la final y tercer puesto 16. No pasa nada si no acertáis quien pasa en octavos (bueno si, que no conseguís putos), pero podéis seguir acertando en las siguientes fases. Los puntos en este caso se reparten de la siguiente manera:**
+## Datos mock
 
-- Por acertar clasificación en octavos: +5 PUNTOS (máx: 40 puntos)
-- Por acertar clasificación en cuartos: +6 PUNTOS (máx: 24 puntos)
-- Por acertar clasificación en semifinales: +7 PUNTOS (máx: 14 puntos)
-- Por acertar el 4o puesto: +8 PUNTOS
-- Por acertar el 3er puesto: +9 PUNTOS
-- Por acertar el 2o puesto: +10 PUNTOS
-- Por acertar el 1o puesto: +20 PUNTOS
+Los mocks usan grupos/equipos 2026 como referencia para entender el flujo antes de conectar Supabase.
+La fase de grupos genera los 6 cruces de cada grupo, permite elegir el orden final con selectores y agrega la selección de los 8 mejores terceros.
+La vista de eliminatorias usa cruces mock desde ronda de 32 y selectores de equipos para que luego podamos comparar por `team_id`.
 
-Para los que no lo sepáis, hay un importantísimo partido para decidir el tercer y cuarto puesto que también hay que rellenar. En el caso de la final y el partido por el tercer puesto, no se indica quien va a ganar solamente, si no también quien va a perder. Es decir, vais a poner directamente quien gana y pierde el partido de la final (primero y segundo) y quien gana y pierde el partido por el tercer puesto (tercer y cuarto puesto). 
+## Desarrollo local
 
-Por último, hay una pregunta extra que dará 10 puntos a quien la acierte. Y es... El máximo goleador del Mundial! 
+Ejecuta la app web en modo desarrollo:
 
-Se van a repetir algo más de puntos que en la primera fase, así que si estás en el tren de cola no te preocupes, cosas peores se han remontado (tenéis ya actualizado el Excel con los resultados de la primera fase).
+```powershell
+.\gradlew.bat jsBrowserRun
+```
 
-Si habéis llegado hasta aquí enhorabuena! Si no habéis entendido nada igual no es culpa vuestra pero es viernes, es tarde y el CEDA trabaja gratis…. se admiten donaciones (:
+Genera el build de producción:
 
-Cualquier duda/queja/recomendación estaremos encantados de no recibirla hasta el lunes (las donaciones sí, para eso 24/7).
+```powershell
+.\gradlew.bat jsBrowserProductionWebpack
+```
 
-Saludos y que la suerte os acompañe.
+La salida de producción queda en:
 
+```text
+build/kotlin-webpack/js/productionExecutable
+```
 
-Cómo deberíais saber todos, dentro de nada empieza el mundial de fútbol en Qatar. Para darle un poco de vidilla y que estemos todos pendientes de un emocionante Qatar-Senegal, desde el nuevo y autoproclamado **_Comité de Eventos Deportivos y Apuestas de CRIDA_** os proponemos participar en una macroporra futbolística.
+## Vistas disponibles localmente
 
-La participación está abierta a **_todos los trabajadores de CRIDA_**. Da igual que lleves 14 años, acabes de entrar, seas el director o un becario. Poco importa si sabes de fútbol o no, lo importante es participar y de paso llevarse un dinerito para compararse una buena cesta de Navidad.
+La app usa rutas hash para funcionar como SPA sin configurar servidor:
 
-La porra se va a dividir en dos fases, por lo que tendréis que rellenar dos cuestionarios. El primero es para la **_fase de grupos_** y lo podéis completar ya con el enlace que encontraréis al final del correo. El segundo es para la **_fase final_**, y estará disponible cuando se sepan los clasificados de la fase de grupos y cubrirá todo lo que quede de mundial hasta la gran final.
+- `#/` reglas principales y llamada a participar.
+- `#/predicciones/grupos` formulario de fase de grupos en modo maqueta.
+- `#/predicciones/eliminatorias` formulario de eliminatorias en modo maqueta.
+- `#/dashboard` ranking y resultados en modo maqueta.
+- `#/admin/login` acceso admin en modo maqueta.
+- `#/admin` panel admin.
+- `#/admin/participantes` aprobacion de pagos.
+- `#/admin/resultados` carga de resultados.
+- `#/admin/configuracion` configuracion de fases.
 
-El ganador será el que consiga más puntos entre las dos fases. Los puntos se consiguen acertando resultados, de forma que para cada partido **_se tiene que pronosticar el resultado con los goles de cada equipo_**. Por acertar quién gana un partido se obtiene 1 punto y por acertar el resultado exacto se obtienen otros 2. En esta primera fase de grupos también **_se premia acertar la clasificación de cada uno de los grupos_** (quien queda primero, segundo, tercero y cuarto). Esto se rellenan de forma independiente a los resultados de cada partido y se premia de la siguiente manera:
+## Supabase
 
-- Por acertar la posición final en el grupo de un equipo: +2 PUNTOS
-- Por acertar la posición exacta de todos los equipos de un grupo: +2 PUNTOS
-- Por acertar que un equipo pase a la fase final: +1 PUNTO
+La migracion inicial esta en `supabase/migrations/0001_initial_schema.sql`.
+La guia para vincular el proyecto y crear tablas esta en `docs/SUPABASE.md`.
 
-Tenéis las bases completas en el propio cuestionario, al que podéis acceder a través del siguiente enlace:
+## Plan del MVP
 
-[https://forms.gle/BabJJWraKzq5xxgz8](https://eur02.safelinks.protection.outlook.com/?url=https%3A%2F%2Fforms.gle%2FBabJJWraKzq5xxgz8&data=05%7C01%7Cahcastaneda%40e-crida.enaire.es%7C139e7332d8ad454fd05508dac956a3fc%7C91b26beec29543358fc6d625c06567ba%7C0%7C0%7C638043671200920260%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=FZID%2Ffk9pA6DSYEFoJnuvBY5K8mQ42juNzm5%2FrTnLQ8%3D&reserved=0 "Dirección URL original: https://forms.gle/BabJJWraKzq5xxgz8. Haga clic o pulse si confía en este vínculo.")
+- Los participantes no tienen login: completan nombre, correo y predicciones.
+- El admin tiene login y aprueba pagos de 5 EUR por Bizum o efectivo.
+- Hay dos formularios: fase de grupos y eliminatorias.
+- El dashboard general muestra resultados, puntos y ranking.
+- Firebase y Cloudflare quedan fuera del MVP para mantener el proyecto simple.
 
-Y ahora a lo importante, el premio. La **_participación va a ser de 5€_** y el reparto de la recaudación será el siguiente:
+## Reglas 2026
 
-- **_70%_** de la recaudación para el **_ganador_**
-- **_20%_** de la recaudación para el **_segundo_** clasificado
-- **_10%_** de la recaudación para el **_tercer_** clasificado
+El Mundial 2026 cambia el flujo respecto a Qatar 2022:
+
+- Hay 48 equipos.
+- Hay 12 grupos de 4 equipos.
+- Cada equipo juega 3 partidos de fase de grupos.
+- Clasifican a eliminatorias 32 equipos: los 2 primeros de cada grupo y los 8 mejores terceros.
+- La fase final empieza en ronda de 32, luego octavos, cuartos, semifinales, tercer puesto y final.
+
+## Puntuación del MVP
+
+Fase de grupos:
+
+- Resultado correcto por partido: +1 punto.
+- Marcador exacto por partido: +2 puntos adicionales.
+- Posición exacta de un equipo en su grupo: +2 puntos.
+- Orden completo de un grupo perfecto: +2 puntos extra.
+- Equipo clasificado a ronda de 32: +1 punto, incluyendo primeros, segundos y mejores terceros.
+
+Eliminatorias:
+
+- Resultado correcto por partido: +3 puntos.
+- Marcador exacto por partido: 5 puntos en total.
+- Clasificado desde ronda de 32: +4 puntos por equipo.
+- Clasificado a cuartos: +5 puntos por equipo.
+- Clasificado a semifinales: +6 puntos por equipo.
+- Clasificado a final o tercer puesto: +7 puntos por equipo.
+- 4o puesto: +8 puntos.
+- 3er puesto: +9 puntos.
+- Subcampeón: +10 puntos.
+- Campeón: +20 puntos.
+
+Los cruces de eliminatorias en el mock son solo una maqueta. En la app real, el admin cargará los 32 clasificados oficiales y la app generará el formulario desde esos datos.

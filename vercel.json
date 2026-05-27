@@ -1,0 +1,5 @@
+{
+  "buildCommand": "bash ./gradlew jsBrowserProductionWebpack",
+  "outputDirectory": "build/kotlin-webpack/js/productionExecutable",
+  "framework": null
+}
