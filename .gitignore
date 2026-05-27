@@ -6,7 +6,6 @@ out/
 *.iml
 
 node_modules/
-kotlin-js-store/
 npm-debug.log*
 yarn-error.log*
 
