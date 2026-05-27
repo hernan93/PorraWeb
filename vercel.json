@@ -1,6 +1,6 @@
 {
   "installCommand": "dnf install -y java-21-amazon-corretto-devel",
-  "buildCommand": "export JAVA_HOME=$(find /usr/lib/jvm -maxdepth 1 -type d -name 'java-21*' | head -n 1) && export PATH=$JAVA_HOME/bin:$PATH && java -version && bash ./gradlew jsBrowserProductionWebpack",
+  "buildCommand": "export JAVA_HOME=$(find /usr/lib/jvm -maxdepth 1 -type d -name 'java-21*' | head -n 1) && export PATH=$JAVA_HOME/bin:$PATH && java -version && bash ./gradlew kotlinUpgradePackageLock jsBrowserProductionWebpack",
   "outputDirectory": "build/kotlin-webpack/js/productionExecutable",
   "framework": null
 }
