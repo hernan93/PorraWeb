@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 
 class SupabasePorraRepository(private val config: SupabaseConfig) : PorraRepository {
     private val scope = MainScope()
-    private var state by mutableStateOf(RepositoryState.from(MockPorraRepository))
+    private var state by mutableStateOf(RepositoryState.empty())
 
     init {
         scope.launch {
@@ -220,14 +220,18 @@ private data class RepositoryState(
     val latestResults: List<MatchResult>,
 ) {
     companion object {
-        fun from(repository: PorraRepository): RepositoryState = RepositoryState(
-            teams = repository.teams(),
-            groups = repository.groups(),
-            groupMatches = repository.groupMatches(),
-            knockoutMatches = repository.knockoutMatches(),
-            dashboardSummary = repository.dashboardSummary(),
-            ranking = repository.ranking(),
-            latestResults = repository.latestResults(),
+        fun empty(): RepositoryState = RepositoryState(
+            teams = emptyList(),
+            groups = emptyList(),
+            groupMatches = emptyList(),
+            knockoutMatches = emptyList(),
+            dashboardSummary = DashboardSummary(
+                approvedParticipants = 0,
+                updatedMatches = 0,
+                currentPhase = "Fase de grupos 2026",
+            ),
+            ranking = emptyList(),
+            latestResults = emptyList(),
         )
     }
 }
