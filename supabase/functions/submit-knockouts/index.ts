@@ -173,6 +173,48 @@ async function logEmail(
   }
 }
 
+async function sendEmailWithLog(
+  client: SupabaseClient,
+  apiKey: string,
+  participantId: string,
+  from: string,
+  to: string,
+  subject: string,
+  text: string,
+  html: string,
+  template: string,
+): Promise<void> {
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ from, to: [to], subject, text, html }),
+    });
+    const payload = await response.json().catch(() => ({})) as { id?: string; message?: string; error?: string };
+
+    if (!response.ok) {
+      await logEmail(
+        client,
+        participantId,
+        to,
+        template,
+        "failed",
+        undefined,
+        payload.message ?? payload.error ?? `Resend returned ${response.status}`,
+      );
+      return;
+    }
+
+    await logEmail(client, participantId, to, template, "sent", payload.id);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown email error";
+    await logEmail(client, participantId, to, template, "failed", undefined, message);
+  }
+}
+
 async function sendConfirmationEmail(
   client: SupabaseClient,
   participantId: string,
@@ -189,6 +231,7 @@ async function sendConfirmationEmail(
 
   const safeName = escapeHtml(name);
   const from = Deno.env.get("RESEND_FROM_EMAIL") ?? "PorraWeb <onboarding@resend.dev>";
+  const adminReceiptEmail = Deno.env.get("ADMIN_RECEIPT_EMAIL") ?? "hernancit1993@gmail.com";
   const subject = "Confirmacion de prediccion de eliminatorias - PorraWeb";
   const text = `Hola ${name},\n\nRecibimos tu prediccion de eliminatorias en PorraWeb. Podras seguir el ranking en la pagina cuando avancen los resultados oficiales.\n\nEste es el resguardo de lo que enviaste:\n\n${receipt.text}\n\nGracias por participar.`;
   const html = `
@@ -200,34 +243,17 @@ async function sendConfirmationEmail(
     <p>Gracias por participar.</p>
   `;
 
-  try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ from, to: [email], subject, text, html }),
-    });
-    const payload = await response.json().catch(() => ({})) as { id?: string; message?: string; error?: string };
+  await sendEmailWithLog(client, apiKey, participantId, from, email, subject, text, html, template);
 
-    if (!response.ok) {
-      await logEmail(
-        client,
-        participantId,
-        email,
-        template,
-        "failed",
-        undefined,
-        payload.message ?? payload.error ?? `Resend returned ${response.status}`,
-      );
-      return;
-    }
-
-    await logEmail(client, participantId, email, template, "sent", payload.id);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown email error";
-    await logEmail(client, participantId, email, template, "failed", undefined, message);
+  if (adminReceiptEmail.toLowerCase() !== email.toLowerCase()) {
+    const adminSubject = `Copia admin - ${subject}`;
+    const adminText = `Resguardo admin de prediccion enviada por ${name} <${email}>.\n\n${receipt.text}`;
+    const adminHtml = `
+      <p><strong>Resguardo admin de prediccion enviada.</strong></p>
+      <p>Participante: ${safeName} &lt;${escapeHtml(email)}&gt;</p>
+      ${receipt.html}
+    `;
+    await sendEmailWithLog(client, apiKey, participantId, from, adminReceiptEmail, adminSubject, adminText, adminHtml, "knockouts_submission_admin_copy");
   }
 }
 

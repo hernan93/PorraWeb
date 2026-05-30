@@ -23,6 +23,22 @@ open class AdminAuthService(private val config: SupabaseConfig) {
         return text(s.access_token)
     }
 
+    suspend fun getValidAccessToken(): String? {
+        val session = getSession() ?: return null
+        val accessToken = text(session.access_token) ?: return null
+        val expiresAt = (session.expires_at as? Number)?.toDouble()
+        val nowSeconds = (js("Date.now() / 1000") as Number).toDouble()
+
+        if (expiresAt == null || expiresAt > nowSeconds + 60) {
+            return accessToken
+        }
+
+        val refreshToken = text(session.refresh_token) ?: return accessToken
+        val refreshed = refreshSession(refreshToken) ?: return null
+        saveSession(refreshed)
+        return text(refreshed.access_token)
+    }
+
     init {
         scope.launch {
             runCatching { checkSession() }
@@ -85,6 +101,34 @@ open class AdminAuthService(private val config: SupabaseConfig) {
 
     private fun saveSession(session: dynamic) {
         window.localStorage.setItem(sessionStorageKey, stringifyJson(session))
+    }
+
+    private suspend fun refreshSession(refreshToken: String): dynamic? {
+        val headers: dynamic = js("({})")
+        headers["apikey"] = config.publishableKey
+        headers["Content-Type"] = "application/json"
+
+        val body: dynamic = js("({})")
+        body.refresh_token = refreshToken
+
+        val init: dynamic = js("({})")
+        init.method = "POST"
+        init.headers = headers
+        init.body = stringifyJson(body)
+
+        val response = window.fetch(
+            "${config.supabaseUrl}/auth/v1/token?grant_type=refresh_token",
+            init,
+        ).await()
+
+        if (!response.ok) {
+            window.localStorage.removeItem(sessionStorageKey)
+            isLoggedIn = false
+            isAdmin = false
+            return null
+        }
+
+        return response.json().await()
     }
 
     private fun parseJson(raw: String): dynamic = js("JSON.parse(raw)")

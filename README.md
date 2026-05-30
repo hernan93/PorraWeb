@@ -32,6 +32,7 @@ Secrets de Supabase Edge Functions:
 ```text
 RESEND_API_KEY
 RESEND_FROM_EMAIL
+ADMIN_RECEIPT_EMAIL
 SUPABASE_SECRET_KEYS
 SUPABASE_SERVICE_ROLE_KEY
 ```
@@ -131,8 +132,8 @@ https://api.fifa.com/api/v3/calendar/matches?language=en&count=104&idCompetition
 Funciones desplegadas:
 
 - `sync-fifa-matches`: sincroniza FIFA y recalcula puntajes si hay resultados.
-- `submit-groups`: registra solicitudes/predicciones de grupos y envia email de resguardo.
-- `submit-knockouts`: registra predicciones de eliminatorias y envia email de resguardo.
+- `submit-groups`: registra solicitudes/predicciones de grupos y envia email de resguardo al participante y copia admin.
+- `submit-knockouts`: registra predicciones de eliminatorias y envia email de resguardo al participante y copia admin.
 - `approve-participant`: aprueba/rechaza participantes desde admin.
 - `update-settings`: guarda fases, importe y Bizum desde admin.
 

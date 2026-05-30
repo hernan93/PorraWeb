@@ -334,7 +334,7 @@ private fun RealParticipantTable(
 
 private suspend fun loadParticipants(config: SupabaseConfig?, authService: AdminAuthService): List<PaymentParticipant> {
     if (config == null) return emptyList()
-    val token = authService.getAccessToken() ?: return emptyList()
+    val token = authService.getValidAccessToken() ?: return emptyList()
     val response = window.fetch(
         "${config.supabaseUrl}/rest/v1/participants?select=id,name,email,payment_status,approval_status&order=created_at.asc",
         authInit(config, token)
@@ -358,7 +358,7 @@ private suspend fun loadParticipants(config: SupabaseConfig?, authService: Admin
 
 private suspend fun loadSettings(config: SupabaseConfig?, authService: AdminAuthService): AdminSettings? {
     if (config == null) return null
-    val token = authService.getAccessToken() ?: return null
+    val token = authService.getValidAccessToken() ?: return null
     val response = window.fetch(
         "${config.supabaseUrl}/rest/v1/app_settings?select=key,value",
         authInit(config, token)
@@ -381,7 +381,7 @@ private suspend fun loadSettings(config: SupabaseConfig?, authService: AdminAuth
 
 private suspend fun saveSettings(config: SupabaseConfig?, authService: AdminAuthService, groupsStatus: String, knockoutsStatus: String, groupDeadline: String, bizumPhone: String, participationPriceEur: String): Boolean {
     if (config == null) return false
-    val token = authService.getAccessToken() ?: return false
+    val token = authService.getValidAccessToken() ?: return false
     val body: dynamic = js("({})")
     val arr = js("([])")
     val settings = listOf(
@@ -404,7 +404,7 @@ private suspend fun saveSettings(config: SupabaseConfig?, authService: AdminAuth
 
 private suspend fun syncFifaMatches(config: SupabaseConfig?, authService: AdminAuthService): Pair<String, Boolean> {
     if (config == null) return "Error de configuracion" to false
-    val token = authService.getAccessToken() ?: return "Sesion admin expirada" to false
+    val token = authService.getValidAccessToken() ?: return "Sesion admin expirada" to false
     val headers: dynamic = js("({})")
     headers["Authorization"] = "Bearer $token"
     headers["Content-Type"] = "application/json"
@@ -447,7 +447,7 @@ private fun approvalLabel(value: String): String = when (value) {
 
 private suspend fun approveParticipant(config: SupabaseConfig?, authService: AdminAuthService, participantId: String, action: String): Boolean {
     if (config == null) return false
-    val token = authService.getAccessToken() ?: return false
+    val token = authService.getValidAccessToken() ?: return false
     val body: dynamic = js("({})")
     body.participant_id = participantId
     body.action = action

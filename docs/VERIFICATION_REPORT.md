@@ -40,6 +40,7 @@ La app esta desplegada en produccion y conectada a Supabase real. El flujo publi
 | `RESEND_FROM_EMAIL` | Configurado en Supabase secrets. |
 | Email real grupos | Enviado a `hernancit1993@gmail.com`, `email_logs.status = sent`. |
 | Resguardo HTML | Confirmado por el usuario: el correo llega con predicciones ingresadas. |
+| Copia admin | Implementada para grupos y eliminatorias mediante `ADMIN_RECEIPT_EMAIL` o fallback `hernancit1993@gmail.com`. |
 
 ## Admin y Fases
 

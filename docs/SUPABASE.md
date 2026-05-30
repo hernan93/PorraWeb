@@ -56,9 +56,10 @@ Cuando conectemos la web necesitaremos separar variables publicas de secretos. E
 | `SUPABASE_SERVICE_ROLE_KEY` | Legacy fallback de Edge Functions. No usar en frontend. |
 | `RESEND_API_KEY` | Solo Supabase Edge Functions para enviar emails. |
 | `RESEND_FROM_EMAIL` | Opcional. Remitente verificado en Resend; si falta se usa `PorraWeb <onboarding@resend.dev>` para pruebas. |
+| `ADMIN_RECEIPT_EMAIL` | Opcional. Correo que recibe copia de cada resguardo de predicciones; si falta se usa `hernancit1993@gmail.com`. |
 | `SYNC_FIFA_SECRET` | Opcional en Supabase Edge Functions si se programa una llamada externa sin JWT. |
 
-No pongas estas claves dentro del codigo fuente. No pongas `SUPABASE_SECRET_KEYS`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` ni `RESEND_FROM_EMAIL` en variables expuestas al frontend.
+No pongas estas claves dentro del codigo fuente. No pongas `SUPABASE_SECRET_KEYS`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL` ni `ADMIN_RECEIPT_EMAIL` en variables expuestas al frontend.
 
 El frontend genera `config.js` en build con `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY`. Si faltan esas variables, la app usa el repositorio mock.
 
@@ -167,6 +168,6 @@ Debe mostrar `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY` en Production.
 
 Los formularios se guardan con Supabase Edge Functions. Asi validamos duplicados, aprobaciones y emails sin exponer la clave de Resend en el navegador.
 
-Las funciones `submit-groups` y `submit-knockouts` envian un email de confirmacion con Resend despues de guardar la prediccion. Si Resend falla, la prediccion no se pierde: se guarda un registro en `email_logs` con estado `failed` para revisar el problema.
+Las funciones `submit-groups` y `submit-knockouts` envian un email de confirmacion con Resend despues de guardar la prediccion. Tambien envian una copia de resguardo al correo admin configurado en `ADMIN_RECEIPT_EMAIL` o, si falta, a `hernancit1993@gmail.com`. Si Resend falla, la prediccion no se pierde: se guarda un registro en `email_logs` con estado `failed` para revisar el problema.
 
 Para produccion, configura `RESEND_FROM_EMAIL` con un remitente de dominio verificado. El remitente `onboarding@resend.dev` sirve solo para pruebas controladas.
