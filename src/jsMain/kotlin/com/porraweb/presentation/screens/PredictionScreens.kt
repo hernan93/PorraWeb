@@ -342,8 +342,9 @@ private suspend fun fetchPost(config: SupabaseConfig, path: String, bodyStr: Str
             if (payload.ok as? Boolean == true) (payload.message?.toString() ?: "Guardado correctamente") to true
             else (payload.error?.toString() ?: "Error desconocido") to false
         } else {
-            val payload: dynamic = res.json().await()
-            (payload.error?.toString() ?: "Error del servidor") to false
+            val payload: dynamic = try { res.json().await() } catch (_: Exception) { null }
+            val serverError = payload?.error?.toString() ?: "Error del servidor (${res.status})"
+            serverError to false
         }
     } catch (e: Exception) {
         (e.message ?: "Error de conexion") to false

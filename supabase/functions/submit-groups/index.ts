@@ -326,7 +326,8 @@ async function findOrCreateParticipant(
     .maybeSingle();
 
   if (lookupError) {
-    return { error: `Error al buscar participante: ${lookupError.message}`, participant: null, created: false };
+    console.error("findOrCreateParticipant lookup error:", lookupError.message);
+    return { error: "Error al buscar participante. Intenta de nuevo.", participant: null, created: false };
   }
 
   if (!existing) {
@@ -342,7 +343,8 @@ async function findOrCreateParticipant(
       .single();
 
     if (insertError || !created) {
-      return { error: `Error al crear participante: ${insertError?.message}`, participant: null, created: false };
+      console.error("findOrCreateParticipant insert error:", insertError?.message);
+      return { error: "Error al crear participante. Intenta de nuevo.", participant: null, created: false };
     }
 
     return { error: null, participant: created, created: true };
@@ -364,7 +366,8 @@ async function validateMatches(
     .in("id", matchIds);
 
   if (error) {
-    return `Error al validar partidos: ${error.message}`;
+    console.error("validateMatches error:", error.message);
+    return "Error al validar partidos. Intenta de nuevo.";
   }
 
   const existingIds = new Set(matches?.map((m) => m.id) ?? []);
@@ -391,8 +394,8 @@ async function validateGroupsAndTeams(
       client.from("teams").select("id").in("id", teamIds),
     ]);
 
-  if (groupError) return `Error al validar grupos: ${groupError.message}`;
-  if (teamError) return `Error al validar equipos: ${teamError.message}`;
+  if (groupError) { console.error("validateGroupsAndTeams group error:", groupError.message); return "Error al validar grupos. Intenta de nuevo."; }
+  if (teamError) { console.error("validateGroupsAndTeams team error:", teamError.message); return "Error al validar equipos. Intenta de nuevo."; }
 
   const existingGroupIds = new Set(groups?.map((g) => g.id) ?? []);
   const existingTeamIds = new Set(teams?.map((t) => t.id) ?? []);
@@ -410,7 +413,7 @@ async function validateGroupsAndTeams(
     .select("group_id, team_id")
     .in("group_id", groupIds);
 
-  if (groupTeamError) return `Error al validar equipos por grupo: ${groupTeamError.message}`;
+  if (groupTeamError) { console.error("validateGroupsAndTeams groupTeam error:", groupTeamError.message); return "Error al validar pertenencia a grupos. Intenta de nuevo."; }
 
   const validPairs = new Set((groupTeams ?? []).map((row) => `${row.group_id}:${row.team_id}`));
   for (const position of positions) {
@@ -467,7 +470,8 @@ serve(async (req: Request): Promise<Response> => {
       .maybeSingle();
 
     if (formError) {
-      return jsonResponse({ ok: false, error: `Error al verificar estado del formulario: ${formError.message}` }, 500);
+      console.error("Form status read error:", formError.message);
+      return jsonResponse({ ok: false, error: "Error al verificar configuracion. Intenta de nuevo." }, 500);
     }
 
     if (formSetting?.value === "closed") {
@@ -554,7 +558,8 @@ serve(async (req: Request): Promise<Response> => {
       .in("id", [...positionsByGroup.keys()]);
 
     if (submittedGroupsError) {
-      return jsonResponse({ ok: false, error: `Error al validar grupos: ${submittedGroupsError.message}` }, 400);
+      console.error("Group validation error:", submittedGroupsError.message);
+      return jsonResponse({ ok: false, error: "Error al validar grupos. Intenta de nuevo." }, 400);
     }
 
     const groupLabels = new Map((submittedGroups ?? []).map((g) => [g.id, `Grupo ${g.code}`]));
@@ -595,8 +600,9 @@ serve(async (req: Request): Promise<Response> => {
       .single();
 
     if (subInsertError || !submission) {
+      console.error("Submission insert error:", subInsertError?.message);
       return jsonResponse(
-        { ok: false, error: `Error al crear la predicción: ${subInsertError?.message}` },
+        { ok: false, error: "Error al crear la prediccion. Intenta de nuevo." },
         500,
       );
     }
@@ -615,9 +621,10 @@ serve(async (req: Request): Promise<Response> => {
       .insert(matchPredictionsPayload);
 
     if (mpError) {
+      console.error("Match predictions insert error:", mpError.message);
       await client.from("submissions").delete().eq("id", submissionId);
       return jsonResponse(
-        { ok: false, error: `Error al guardar predicciones de partidos: ${mpError.message}` },
+        { ok: false, error: "Error al guardar predicciones de partidos. Intenta de nuevo." },
         500,
       );
     }
@@ -634,9 +641,10 @@ serve(async (req: Request): Promise<Response> => {
       .insert(groupPositionPayload);
 
     if (gpError) {
+      console.error("Group position insert error:", gpError.message);
       await client.from("submissions").delete().eq("id", submissionId);
       return jsonResponse(
-        { ok: false, error: `Error al guardar posiciones de grupo: ${gpError.message}` },
+        { ok: false, error: "Error al guardar posiciones de grupo. Intenta de nuevo." },
         500,
       );
     }
@@ -652,9 +660,10 @@ serve(async (req: Request): Promise<Response> => {
         .insert(thirdPlacePayload);
 
       if (tpError) {
+        console.error("Third place insert error:", tpError.message);
         await client.from("submissions").delete().eq("id", submissionId);
         return jsonResponse(
-          { ok: false, error: `Error al guardar selecciones de terceros: ${tpError.message}` },
+          { ok: false, error: "Error al guardar selecciones de terceros. Intenta de nuevo." },
           500,
         );
       }
@@ -685,7 +694,6 @@ serve(async (req: Request): Promise<Response> => {
     return jsonResponse({ ok: true, submission_id: submissionId, message: pendingMessage });
   } catch (err) {
     console.error("Unexpected error:", err);
-    const message = err instanceof Error ? err.message : "Error interno del servidor.";
-    return jsonResponse({ ok: false, error: message }, 500);
+    return jsonResponse({ ok: false, error: "Error interno del servidor. Intenta de nuevo." }, 500);
   }
 });

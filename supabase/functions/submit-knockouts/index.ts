@@ -331,7 +331,7 @@ async function findOrCreateParticipant(
     .maybeSingle();
 
   if (lookupError) {
-    return { participant: null, created: false, error: "Database error looking up participant" };
+    return { participant: null, created: false, error: "Error de base de datos al buscar participante" };
   }
 
   if (existing) {
@@ -350,7 +350,7 @@ async function findOrCreateParticipant(
     .single();
 
   if (insertError || !created) {
-    return { participant: null, created: false, error: "Failed to create participant" };
+    return { participant: null, created: false, error: "Error de base de datos al crear participante" };
   }
 
   return { participant: created, created: true, error: null };
@@ -358,51 +358,51 @@ async function findOrCreateParticipant(
 
 function validateRequest(body: unknown): RequestBody {
   if (!body || typeof body !== "object") {
-    throw new Error("Invalid JSON body");
+    throw new Error("Cuerpo JSON no valido");
   }
 
   const b = body as Record<string, unknown>;
 
   if (typeof b.participant_name !== "string" || !b.participant_name.trim()) {
-    throw new Error("participant_name is required");
+    throw new Error("El campo participant_name es obligatorio");
   }
 
   if (typeof b.participant_email !== "string" || !b.participant_email.trim()) {
-    throw new Error("participant_email is required");
+    throw new Error("El campo participant_email es obligatorio");
   }
 
   if (!Array.isArray(b.knockout_predictions) || b.knockout_predictions.length === 0) {
-    throw new Error("knockout_predictions must be a non-empty array");
+    throw new Error("knockout_predictions debe ser una lista no vacia");
   }
 
   if (!Array.isArray(b.knockout_match_predictions) || b.knockout_match_predictions.length === 0) {
-    throw new Error("knockout_match_predictions must be a non-empty array");
+    throw new Error("knockout_match_predictions debe ser una lista no vacia");
   }
 
   for (const p of b.knockout_predictions as KnockoutPrediction[]) {
     if (typeof p.phase !== "string" || !p.phase.trim()) {
-      throw new Error("Each knockout_prediction must have a phase");
+      throw new Error("Cada prediccion de cruce debe tener una fase");
     }
     if (typeof p.slot_code !== "string" || !p.slot_code.trim()) {
-      throw new Error("Each knockout_prediction must have a slot_code");
+      throw new Error("Cada prediccion de cruce debe tener un slot_code");
     }
     if (typeof p.predicted_team_id !== "string" || !p.predicted_team_id.trim()) {
-      throw new Error("Each knockout_prediction must have a predicted_team_id");
+      throw new Error("Cada prediccion de cruce debe tener un predicted_team_id");
     }
   }
 
   for (const p of b.knockout_match_predictions as KnockoutMatchPrediction[]) {
     if (typeof p.match_id !== "string" || !p.match_id.trim()) {
-      throw new Error("Each knockout_match_prediction must have a match_id");
+      throw new Error("Cada prediccion de marcador debe tener un match_id");
     }
     if (typeof p.home_goals !== "number" || !Number.isInteger(p.home_goals) || p.home_goals < 0) {
-      throw new Error("Each knockout_match_prediction must have a non-negative integer home_goals");
+      throw new Error("Los goles locales deben ser un entero no negativo");
     }
     if (typeof p.away_goals !== "number" || !Number.isInteger(p.away_goals) || p.away_goals < 0) {
-      throw new Error("Each knockout_match_prediction must have a non-negative integer away_goals");
+      throw new Error("Los goles visitantes deben ser un entero no negativo");
     }
     if (typeof p.predicted_winner_team_id !== "string" || !p.predicted_winner_team_id.trim()) {
-      throw new Error("Each knockout_match_prediction must have a predicted_winner_team_id");
+      throw new Error("Cada prediccion de marcador debe tener un predicted_winner_team_id");
     }
   }
 
@@ -421,7 +421,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (req.method !== "POST") {
-      return json({ ok: false, error: "Method not allowed" }, 405);
+      return json({ ok: false, error: "Metodo no permitido" }, 405);
     }
 
     const supabaseUrl = getEnv("SUPABASE_URL");
@@ -430,7 +430,7 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const raw: unknown = await req.json().catch(() => {
-      throw new Error("Invalid JSON body");
+      throw new Error("Cuerpo JSON no valido");
     });
 
     const body = validateRequest(raw);
@@ -441,9 +441,9 @@ Deno.serve(async (req: Request) => {
     );
 
     if (participantErr) return json({ ok: false, error: participantErr }, 500);
-    if (!participant) return json({ ok: false, error: "Participant not found" }, 500);
+    if (!participant) return json({ ok: false, error: "Participante no encontrado" }, 500);
     if (participant.approval_status === "rejected") {
-      return json({ ok: false, error: "Participant was rejected" }, 403);
+      return json({ ok: false, error: "Tu participacion fue rechazada. Contacta con el administrador." }, 403);
     }
 
     // 2. Check knockout form status
@@ -454,11 +454,11 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (settingsErr) {
-      return json({ ok: false, error: "Could not read app settings" }, 500);
+      return json({ ok: false, error: "Error al leer configuracion" }, 500);
     }
 
     if (appSettings.value === "closed") {
-      return json({ ok: false, error: "Knockout predictions are closed" }, 403);
+      return json({ ok: false, error: "El formulario de eliminatorias esta cerrado." }, 403);
     }
 
     // 3. Check no existing submission
@@ -471,7 +471,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (existingErr) {
-      return json({ ok: false, error: "Database error checking existing submission" }, 500);
+      return json({ ok: false, error: "Error al verificar predicciones existentes" }, 500);
     }
 
     if (existingSub) {
@@ -489,14 +489,14 @@ Deno.serve(async (req: Request) => {
       if (actual !== expected) {
         return json({
           ok: false,
-          error: `Phase ${phase} must have exactly ${expected} predictions, got ${actual}`,
+          error: `${PHASE_LABELS[phase] ?? phase}: debe tener exactamente ${expected} predicciones, recibio ${actual}`,
         }, 400);
       }
     }
 
     for (const phase of Object.keys(phaseCounts)) {
       if (!VALID_KNOCKOUT_PHASES.has(phase)) {
-        return json({ ok: false, error: `Invalid knockout phase: ${phase}` }, 400);
+        return json({ ok: false, error: `Fase de eliminatorias no valida: ${phase}` }, 400);
       }
     }
 
@@ -512,13 +512,13 @@ Deno.serve(async (req: Request) => {
       .in("id", predictedTeamIds);
 
     if (teamsErr) {
-      return json({ ok: false, error: "Database error validating teams" }, 500);
+      return json({ ok: false, error: "Error al validar equipos" }, 500);
     }
 
     const validTeamIds = new Set((teams ?? []).map((t: { id: string }) => t.id));
     for (const tid of predictedTeamIds) {
       if (!validTeamIds.has(tid)) {
-        return json({ ok: false, error: `Team not found: ${tid}` }, 400);
+        return json({ ok: false, error: `Equipo no encontrado: ${tid}` }, 400);
       }
     }
 
@@ -531,19 +531,19 @@ Deno.serve(async (req: Request) => {
       .in("id", matchIds);
 
     if (matchesErr) {
-      return json({ ok: false, error: "Database error validating matches" }, 500);
+      return json({ ok: false, error: "Error al validar partidos" }, 500);
     }
 
     const validMatchIds = new Set((matches ?? []).map((m: { id: string }) => m.id));
     for (const mid of matchIds) {
       if (!validMatchIds.has(mid)) {
-        return json({ ok: false, error: `Match not found: ${mid}` }, 400);
+        return json({ ok: false, error: `Partido no encontrado: ${mid}` }, 400);
       }
     }
 
     for (const m of matches ?? []) {
       if (m.phase === "group") {
-        return json({ ok: false, error: `Match ${m.id} is a group match, not a knockout match` }, 400);
+        return json({ ok: false, error: `El partido ${m.id} es de fase de grupos, no de eliminatorias` }, 400);
       }
     }
 
@@ -560,7 +560,7 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (insertSubErr || !submission) {
-      return json({ ok: false, error: "Failed to create submission" }, 500);
+      return json({ ok: false, error: "Error al crear prediccion" }, 500);
     }
 
     const submissionId: string = submission.id;
@@ -578,7 +578,7 @@ Deno.serve(async (req: Request) => {
 
     if (insertKnockoutErr) {
       await supabase.from("submissions").delete().eq("id", submissionId);
-      return json({ ok: false, error: "Failed to insert knockout predictions" }, 500);
+      return json({ ok: false, error: "Error al guardar predicciones de eliminatorias" }, 500);
     }
 
     const knockouMatchPredictionsRow = body.knockout_match_predictions.map((p) => ({
@@ -595,7 +595,7 @@ Deno.serve(async (req: Request) => {
 
     if (insertMatchErr) {
       await supabase.from("submissions").delete().eq("id", submissionId);
-      return json({ ok: false, error: "Failed to insert knockout match predictions" }, 500);
+      return json({ ok: false, error: "Error al guardar marcadores de eliminatorias" }, 500);
     }
 
     // Trigger recalculation
@@ -623,7 +623,7 @@ Deno.serve(async (req: Request) => {
 
     return json({ ok: true, submission_id: submissionId, message });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Internal server error";
+    const message = err instanceof Error ? err.message : "Error interno del servidor";
     console.error("submit-knockouts error:", err);
     const status = /required|must|invalid/i.test(message) ? 400 : 500;
     return json({ ok: false, error: message }, status);

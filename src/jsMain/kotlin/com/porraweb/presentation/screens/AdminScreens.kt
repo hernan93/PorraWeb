@@ -159,10 +159,11 @@ fun AdminResultsScreen(repository: PorraRepository, config: SupabaseConfig?, aut
                     syncing = true
                     message = null
                     scope.launch {
-                        val result = syncFifaMatches(config, authService)
-                        message = result.first
-                        messageError = !result.second
-                        syncing = false
+    val result = syncFifaMatches(config, authService)
+    message = result.first
+    messageError = !result.second
+    if (messageError && message?.isBlank() != false) message = "Error al sincronizar. Intenta de nuevo."
+    syncing = false
                     }
                 }
             }) {
@@ -237,7 +238,7 @@ fun AdminSettingsScreen(repository: PorraRepository, config: SupabaseConfig?, au
                     message = null
                     scope.launch {
                         val result = saveSettings(config, authService, groupsStatus, knockoutsStatus, groupDeadline, bizumPhone, participationPriceEur)
-                        message = if (result) "Configuracion guardada" else "Error al guardar"
+                        message = if (result) "Configuracion guardada" else "Error al guardar. Intenta de nuevo."
                         if (result) {
                             onSettingsSaved(
                                 AdminSettings(
@@ -301,9 +302,9 @@ private fun RealParticipantTable(
                                 onClick {
                                     approving = true
                                     scope.launch {
-                                        val ok = approveParticipant(config, authService, participant.participantId, "approve")
-                                        onAction(if (ok) "${participant.name} aprobado como Bizum recibido" else "Error al aprobar")
-                                        approving = false
+        val ok = approveParticipant(config, authService, participant.participantId, "approve")
+        onAction(if (ok) "${participant.name} aprobado como Bizum recibido" else "Error al aprobar. Intenta de nuevo.")
+        approving = false
                                         if (ok) onRefresh()
                                     }
                                 }
@@ -317,8 +318,8 @@ private fun RealParticipantTable(
                                 onClick {
                                     approving = true
                                     scope.launch {
-                                        val ok = approveParticipant(config, authService, participant.participantId, "reject")
-                                        onAction(if (ok) "${participant.name} rechazado" else "Error al rechazar")
+        val ok = approveParticipant(config, authService, participant.participantId, "reject")
+        onAction(if (ok) "${participant.name} rechazado" else "Error al rechazar. Intenta de nuevo.")
                                         approving = false
                                         if (ok) onRefresh()
                                     }

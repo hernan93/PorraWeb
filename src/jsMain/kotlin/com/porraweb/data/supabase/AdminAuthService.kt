@@ -64,10 +64,16 @@ open class AdminAuthService(private val config: SupabaseConfig) {
             signInInit(email, password)
         ).await()
 
-        if (!response.ok) {
+          if (!response.ok) {
             val errorBody = response.text().await()
-            error("Login failed: ${response.status} $errorBody")
-        }
+            println("AdminAuth login failed: ${response.status} $errorBody")
+            val statusCode = (response.status as Number).toInt()
+            when (statusCode) {
+                429 -> error("Demasiados intentos. Espera unos minutos.")
+                401 -> error("Credenciales incorrectas. Revisa correo y contrasena.")
+                else -> error("Error al iniciar sesion (${statusCode}). Intenta de nuevo.")
+            }
+          }
 
         val session: dynamic = response.json().await()
         val accessToken = text(session.access_token) ?: error("Supabase no devolvió sesión válida")
