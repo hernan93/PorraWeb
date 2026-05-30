@@ -167,16 +167,17 @@ object MockPorraRepository : PorraRepository {
     )
 
     override fun pendingParticipants(): List<PaymentParticipant> = listOf(
-        PaymentParticipant("María Torres", "maria@empresa.com", "Pendiente", "Revisión"),
-        PaymentParticipant("Luis Zambrano", "luis@empresa.com", "Bizum recibido", "Pendiente"),
-        PaymentParticipant("Sofía Delgado", "sofia@empresa.com", "Efectivo", "Aprobado"),
+        PaymentParticipant("mock-1", "María Torres", "maria@empresa.com", "Pendiente", "Revisión"),
+        PaymentParticipant("mock-2", "Luis Zambrano", "luis@empresa.com", "Bizum recibido", "Pendiente"),
+        PaymentParticipant("mock-3", "Sofía Delgado", "sofia@empresa.com", "Efectivo", "Aprobado"),
     )
 
     override fun adminSettings(): AdminSettings = AdminSettings(
-        groupsStatus = "Abierta",
-        knockoutsStatus = "Cerrada",
+        groupsStatus = "open",
+        knockoutsStatus = "closed",
         groupDeadline = "2026-06-10 18:00",
         bizumPhone = "+34 600 000 000",
+        participationPriceEur = "5",
     )
 
     private fun team(id: String, name: String): Team = Team(id = id, name = name)

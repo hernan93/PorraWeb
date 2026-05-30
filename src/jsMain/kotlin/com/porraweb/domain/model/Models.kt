@@ -16,6 +16,7 @@ data class Team(
 )
 
 data class TournamentGroup(
+    val id: String = "",
     val code: String,
     val teams: List<Team>,
     val matches: List<GroupMatch>,
@@ -61,6 +62,7 @@ data class MatchResult(
 )
 
 data class PaymentParticipant(
+    val participantId: String,
     val name: String,
     val email: String,
     val paymentStatus: String,
@@ -72,4 +74,5 @@ data class AdminSettings(
     val knockoutsStatus: String,
     val groupDeadline: String,
     val bizumPhone: String,
+    val participationPriceEur: String = "5",
 )

@@ -67,12 +67,12 @@ body {
 .page {
     width: min(1120px, calc(100% - 40px));
     margin: 0 auto;
-    padding: 32px 0 64px;
+    padding: 24px 0 48px;
 }
 
 .hero,
 .page-header {
-    padding: 48px 0 28px;
+    padding: 32px 0 20px;
 }
 
 .participant-hero {
@@ -83,7 +83,7 @@ body {
 .page-header h1 {
     margin: 14px 0;
     color: #07142d;
-    font-size: clamp(38px, 7vw, 68px);
+    font-size: clamp(34px, 5.8vw, 56px);
     line-height: 0.98;
     letter-spacing: -0.055em;
 }
@@ -115,7 +115,7 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-top: 24px;
+    margin-top: 16px;
     flex-wrap: wrap;
 }
 
@@ -124,13 +124,25 @@ body {
     align-items: center;
     justify-content: center;
     min-height: 44px;
-    padding: 12px 17px;
+    padding: 11px 16px;
     border: 0;
-    border-radius: 14px;
+    border-radius: 12px;
     cursor: pointer;
     font: inherit;
     font-weight: 800;
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.10);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+    transition: transform 0.12s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.10);
+}
+
+.button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+    transform: none;
 }
 
 .button-primary {
@@ -197,9 +209,9 @@ body {
 
 .panel,
 .notice {
-    margin-top: 22px;
-    padding: 28px;
-    border-radius: 24px;
+    margin-top: 16px;
+    padding: 22px;
+    border-radius: 20px;
 }
 
 .panel.narrow {
@@ -212,8 +224,8 @@ body {
 
 .card,
 .stat-card {
-    padding: 22px;
-    border-radius: 22px;
+    padding: 18px;
+    border-radius: 18px;
 }
 
 .card h3,
@@ -402,6 +414,86 @@ body {
 .helper-text {
     color: #6b778c;
     font-size: 14px;
+}
+
+.error-text {
+    margin: 10px 0 0;
+    color: #b91c1c;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.success-text {
+    margin: 10px 0 0;
+    color: #0f766e;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+@media (max-width: 720px) {
+    .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 14px 20px;
+    }
+
+    .nav-links {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 4px;
+    }
+
+    .page {
+        width: min(100% - 28px, 1120px);
+        padding-top: 20px;
+    }
+
+    .panel,
+    .notice,
+    .card {
+        padding: 20px;
+    }
+
+    .table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .match-result {
+        grid-template-columns: 1fr auto;
+    }
+
+    .form-grid,
+    .ranking-inputs,
+    .checkbox-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero h1,
+    .page-header h1 {
+        font-size: 28px;
+    }
+
+    .lead,
+    .page-header p {
+        font-size: 16px;
+    }
+
+    .topbar {
+        padding: 10px 14px;
+    }
+
+    .nav-link {
+        padding: 7px 10px;
+        font-size: 13px;
+    }
+
+    .page {
+        padding: 14px 0 28px;
+    }
 }
 
 .notice {

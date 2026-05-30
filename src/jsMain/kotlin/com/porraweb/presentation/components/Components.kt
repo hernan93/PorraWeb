@@ -41,11 +41,19 @@ import org.jetbrains.compose.web.dom.Ul
 
 @Composable
 fun TopBar(current: Route) {
+    TopBar(current = current, settings = null)
+}
+
+@Composable
+fun TopBar(current: Route, settings: AdminSettings?) {
+    val groupsOpen = settings?.groupsStatus != "closed"
+    val knockoutsOpen = settings?.knockoutsStatus == "open"
+
     Div(attrs = { classes("topbar") }) {
         A(href = Route.Home.path, attrs = { classes("brand") }) { Text("PorraWeb 2026") }
         Div(attrs = { classes("nav-links") }) {
-            NavLink(route = Route.GroupPredictions, current = current)
-            NavLink(route = Route.KnockoutPredictions, current = current)
+            if (groupsOpen) NavLink(route = Route.GroupPredictions, current = current)
+            if (knockoutsOpen) NavLink(route = Route.KnockoutPredictions, current = current)
             NavLink(route = Route.Dashboard, current = current)
             NavLink(route = Route.AdminLogin, current = current)
         }
@@ -112,81 +120,141 @@ fun FormGrid(content: @Composable () -> Unit) {
 }
 
 @Composable
-fun TextField(label: String, placeholder: String, type: InputType<*> = InputType.Text) {
+fun TextField(
+    label: String,
+    placeholder: String,
+    type: InputType<*> = InputType.Text,
+    value: String = "",
+    onEnter: () -> Unit = {},
+    onValueChange: (String) -> Unit = {},
+) {
     Label(attrs = { classes("field") }) {
         Span { Text(label) }
         Input(type = type, attrs = {
             classes("input")
             attr("placeholder", placeholder)
+            attr("value", value)
+            onInput { e -> onValueChange(e.target.value) }
+            onKeyDown { e ->
+                if (e.key == "Enter") onEnter()
+            }
         })
     }
 }
 
 @Composable
-fun TeamSelectField(label: String, teams: List<Team>, placeholder: String = "Selecciona equipo") {
+fun SelectField(
+    label: String,
+    value: String,
+    options: List<Pair<String, String>>,
+    onValueChange: (String) -> Unit,
+) {
     Label(attrs = { classes("field") }) {
         Span { Text(label) }
-        Select(attrs = { classes("input") }) {
-            Option(value = "") { Text(placeholder) }
-            teams.forEach { team ->
-                Option(value = team.id) { Text(team.name) }
+        Select(attrs = {
+            classes("input")
+            attr("value", value)
+            onInput { e -> onValueChange(e.target.value) }
+        }) {
+            options.forEach { (optionValue, optionLabel) ->
+                Option(value = optionValue, attrs = {
+                    if (optionValue == value) attr("selected", "selected")
+                }) { Text(optionLabel) }
             }
         }
     }
 }
 
 @Composable
-fun GroupPredictionCard(group: TournamentGroup) {
+fun TeamSelectField(label: String, teams: List<Team>, placeholder: String = "Selecciona equipo", value: String = "", elementId: String = "", onValueChange: (String) -> Unit = {}) {
+    Label(attrs = { classes("field") }) {
+        Span { Text(label) }
+        Select(attrs = {
+            classes("input")
+            if (elementId.isNotEmpty()) id(elementId)
+            attr("value", value)
+            onInput { e -> onValueChange(e.target.value) }
+        }) {
+            Option(value = "", attrs = { if (value.isEmpty()) attr("selected", "selected") }) { Text(placeholder) }
+            teams.forEach { team ->
+                Option(value = team.id, attrs = { if (team.id == value) attr("selected", "selected") }) { Text(team.name) }
+            }
+        }
+    }
+}
+
+@Composable
+fun GroupPredictionCard(
+    group: TournamentGroup,
+    homeScores: Map<String, String> = emptyMap(),
+    awayScores: Map<String, String> = emptyMap(),
+    positions: Map<String, String> = emptyMap(),
+    onHomeScoreChange: (String, String) -> Unit = { _, _ -> },
+    onAwayScoreChange: (String, String) -> Unit = { _, _ -> },
+    onPositionChange: (String, String, String) -> Unit = { _, _, _ -> },
+) {
     Section(attrs = { classes("panel", "group-card") }) {
         H2 { Text("Grupo ${group.code}") }
         P { Text("Predice los 6 partidos y el orden final. Los dos primeros clasifican directo; el tercero puede entrar entre los 8 mejores terceros.") }
         Div(attrs = { classes("team-chips") }) {
             group.teams.forEach { team -> Span(attrs = { classes("team-chip") }) { Text(team.name) } }
         }
-        MatchPredictionTable(matches = group.matches)
+        MatchPredictionTable(
+            matches = group.matches,
+            homeScores = homeScores,
+            awayScores = awayScores,
+            onHomeScoreChange = onHomeScoreChange,
+            onAwayScoreChange = onAwayScoreChange,
+        )
         H3 { Text("Orden final esperado") }
         Div(attrs = { classes("ranking-inputs") }) {
-            TeamSelectField("1er puesto", group.teams)
-            TeamSelectField("2do puesto", group.teams)
-            TeamSelectField("3er puesto", group.teams)
-            TeamSelectField("4to puesto", group.teams)
+            TeamSelectField("1er puesto", group.teams, value = positions["${group.code}-1"].orEmpty(), elementId = "pos-${group.code}-1") { onPositionChange(group.code, "1", it) }
+            TeamSelectField("2do puesto", group.teams, value = positions["${group.code}-2"].orEmpty(), elementId = "pos-${group.code}-2") { onPositionChange(group.code, "2", it) }
+            TeamSelectField("3er puesto", group.teams, value = positions["${group.code}-3"].orEmpty(), elementId = "pos-${group.code}-3") { onPositionChange(group.code, "3", it) }
+            TeamSelectField("4to puesto", group.teams, value = positions["${group.code}-4"].orEmpty(), elementId = "pos-${group.code}-4") { onPositionChange(group.code, "4", it) }
         }
     }
 }
 
 @Composable
-fun BestThirdPlacePredictionCard(groups: List<TournamentGroup>) {
-    val selected = remember { mutableStateOf(setOf<String>()) }
-    val atLimit = selected.value.size >= 8
+fun BestThirdPlacePredictionCard(
+    groups: List<TournamentGroup>,
+    selectedCodes: Set<String>? = null,
+    onToggle: ((String, Boolean) -> Unit)? = null,
+) {
+    val internalSelected = remember { mutableStateOf(setOf<String>()) }
+    val selected = selectedCodes ?: internalSelected.value
+    val atLimit = selected.size >= 8
 
     Section(attrs = { classes("panel", "group-card") }) {
         H2 { Text("Mejores terceros") }
         P { Text("Marca exactamente 8 grupos: esos terceros lugares son los que crees que también pasan a la ronda de 32.") }
         Div(attrs = { classes("third-place-counter") }) {
-            Span(attrs = { classes("counter-value") }) { Text("${selected.value.size}/8") }
+            Span(attrs = { classes("counter-value") }) { Text("${selected.size}/8") }
             Span(attrs = { classes("counter-label") }) { Text(" seleccionados") }
         }
         Div(attrs = { classes("checkbox-grid") }) {
             groups.forEach { group ->
-                val isChecked = group.code in selected.value
+                val isChecked = group.code in selected
                 val disabled = atLimit && !isChecked
                 Label(attrs = {
                     classes("checkbox-field")
                     if (disabled) classes("checkbox-field-disabled")
                 }) {
                     Input(type = InputType.Checkbox, attrs = {
+                        id("tp-${group.code}")
                         checked(isChecked)
                         if (disabled) {
                             attr("disabled", "disabled")
                         }
                         onChange { event ->
-                            val current = selected.value.toMutableSet()
+                            val current = selected.toMutableSet()
                             if (event.value) {
                                 if (current.size < 8) current.add(group.code)
                             } else {
                                 current.remove(group.code)
                             }
-                            selected.value = current
+                            if (onToggle != null) onToggle(group.code, group.code in current) else internalSelected.value = current
                         }
                     })
                     Span { Text("3er puesto del Grupo ${group.code} clasifica") }
@@ -197,7 +265,13 @@ fun BestThirdPlacePredictionCard(groups: List<TournamentGroup>) {
 }
 
 @Composable
-fun MatchPredictionTable(matches: List<GroupMatch>) {
+fun MatchPredictionTable(
+    matches: List<GroupMatch>,
+    homeScores: Map<String, String> = emptyMap(),
+    awayScores: Map<String, String> = emptyMap(),
+    onHomeScoreChange: (String, String) -> Unit = { _, _ -> },
+    onAwayScoreChange: (String, String) -> Unit = { _, _ -> },
+) {
     Table(attrs = { classes("table") }) {
         Thead {
             Tr {
@@ -213,8 +287,8 @@ fun MatchPredictionTable(matches: List<GroupMatch>) {
                 Tr {
                     Td { Text(match.label) }
                     Td { Text(match.homeTeam.name) }
-                    Td { NumberInput() }
-                    Td { NumberInput() }
+                    Td { NumberInput("score-home-${match.id}", homeScores[match.id].orEmpty()) { onHomeScoreChange(match.id, it) } }
+                    Td { NumberInput("score-away-${match.id}", awayScores[match.id].orEmpty()) { onAwayScoreChange(match.id, it) } }
                     Td { Text(match.awayTeam.name) }
                 }
             }
@@ -223,10 +297,13 @@ fun MatchPredictionTable(matches: List<GroupMatch>) {
 }
 
 @Composable
-fun NumberInput() {
+fun NumberInput(elementId: String = "", value: String = "", onValueChange: (String) -> Unit = {}) {
     Input(type = InputType.Number, attrs = {
         classes("score-input")
         attr("min", "0")
+        if (elementId.isNotEmpty()) id(elementId)
+        attr("value", value)
+        onInput { e -> onValueChange(e.target.value) }
     })
 }
 
@@ -234,16 +311,21 @@ fun NumberInput() {
 fun SubmitPreviewButton(label: String) {
     Div(attrs = { classes("form-actions") }) {
         Button(attrs = { classes("button", "button-primary") }) { Text(label) }
-        Span(attrs = { classes("helper-text") }) { Text("Modo local: todavía no guarda en Supabase.") }
     }
 }
 
 @Composable
-fun KnockoutPredictionTable(matches: List<KnockoutMatch>) {
-    val knockoutTeams = matches.flatMap { it.options }.distinctBy { it.id }
-
+fun KnockoutPredictionTable(
+    matches: List<KnockoutMatch>,
+    homeScores: Map<String, String> = emptyMap(),
+    awayScores: Map<String, String> = emptyMap(),
+    winners: Map<String, String> = emptyMap(),
+    onHomeScoreChange: (String, String) -> Unit = { _, _ -> },
+    onAwayScoreChange: (String, String) -> Unit = { _, _ -> },
+    onWinnerChange: (String, String) -> Unit = { _, _ -> },
+) {
     matches.groupBy { it.phase }.forEach { (phase, phaseMatches) ->
-        H3(attrs = { classes("phase-title") }) { Text(phase) }
+        H3(attrs = { classes("phase-title") }) { Text(phaseLabel(phase)) }
         Table(attrs = { classes("table") }) {
             Thead {
                 Tr {
@@ -260,30 +342,38 @@ fun KnockoutPredictionTable(matches: List<KnockoutMatch>) {
                     Tr {
                         Td { Text(match.label) }
                         Td { Text(match.homeSlot) }
-                        Td { NumberInput() }
-                        Td { NumberInput() }
+                        Td { NumberInput("score-home-${match.id}", homeScores[match.id].orEmpty()) { onHomeScoreChange(match.id, it) } }
+                        Td { NumberInput("score-away-${match.id}", awayScores[match.id].orEmpty()) { onAwayScoreChange(match.id, it) } }
                         Td { Text(match.awaySlot) }
-                        Td { InlineTeamSelect(match.options) }
+                        Td { InlineTeamSelect(match.options, "winner-${match.id}", winners[match.id].orEmpty()) { onWinnerChange(match.id, it) } }
                     }
                 }
             }
         }
     }
-
-    Div(attrs = { classes("final-picks") }) {
-        TeamSelectField("Campeón", knockoutTeams)
-        TeamSelectField("Subcampeón", knockoutTeams)
-        TeamSelectField("Tercer puesto", knockoutTeams)
-        TeamSelectField("Cuarto puesto", knockoutTeams)
-    }
 }
 
 @Composable
-fun InlineTeamSelect(teams: List<Team>) {
-    Select(attrs = { classes("input", "compact-select") }) {
-        Option(value = "") { Text("Elige") }
-        teams.forEach { team -> Option(value = team.id) { Text(team.name) } }
+fun InlineTeamSelect(teams: List<Team>, elementId: String = "", value: String = "", onValueChange: (String) -> Unit = {}) {
+    Select(attrs = {
+        classes("input", "compact-select")
+        if (elementId.isNotEmpty()) id(elementId)
+        attr("value", value)
+        onInput { e -> onValueChange(e.target.value) }
+    }) {
+        Option(value = "", attrs = { if (value.isEmpty()) attr("selected", "selected") }) { Text("Elige") }
+        teams.forEach { team -> Option(value = team.id, attrs = { if (team.id == value) attr("selected", "selected") }) { Text(team.name) } }
     }
+}
+
+private fun phaseLabel(phase: String): String = when (phase) {
+    "round_32" -> "Ronda de 32"
+    "round_16" -> "Octavos de final"
+    "quarter_final" -> "Cuartos de final"
+    "semi_final" -> "Semifinales"
+    "third_place" -> "Tercer puesto"
+    "final" -> "Final"
+    else -> phase
 }
 
 @Composable
@@ -361,10 +451,10 @@ fun ParticipantApprovalTable(participants: List<PaymentParticipant>) {
 @Composable
 fun AdminSettingsForm(settings: AdminSettings) {
     FormGrid {
-        TextField("Estado fase de grupos", settings.groupsStatus)
-        TextField("Estado eliminatorias", settings.knockoutsStatus)
-        TextField("Fecha límite grupos", settings.groupDeadline)
-        TextField("Teléfono Bizum", settings.bizumPhone)
+        TextField("Estado fase de grupos", "", value = settings.groupsStatus)
+        TextField("Estado eliminatorias", "", value = settings.knockoutsStatus)
+        TextField("Fecha límite grupos", "", value = settings.groupDeadline)
+        TextField("Teléfono Bizum", "", value = settings.bizumPhone)
     }
 }
 
