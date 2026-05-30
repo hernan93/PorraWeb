@@ -52,6 +52,8 @@ data class DashboardSummary(
     val approvedParticipants: Int,
     val updatedMatches: Int,
     val currentPhase: String,
+    val participationPriceEur: String = "5",
+    val prizePotEur: String = "0",
 )
 
 data class MatchResult(

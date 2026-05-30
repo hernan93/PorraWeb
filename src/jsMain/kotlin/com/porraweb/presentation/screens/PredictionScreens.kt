@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.porraweb.data.supabase.SupabaseConfig
 import com.porraweb.domain.model.AdminSettings
+import com.porraweb.domain.model.TournamentGroup
 import com.porraweb.domain.repository.PorraRepository
 import com.porraweb.presentation.components.BestThirdPlacePredictionCard
 import com.porraweb.presentation.components.FormGrid
@@ -50,6 +51,8 @@ fun GroupPredictionsScreen(repository: PorraRepository, config: SupabaseConfig?,
     var message by remember { mutableStateOf<String?>(null) }
     var messageError by remember { mutableStateOf(false) }
     val scope = remember { MainScope() }
+    val groups = repository.groups()
+    val duplicateGroupCodes = duplicateGroupCodes(groups, PredictionDrafts.groupPositions)
 
     PageHeader(
         title = "Predicciones de fase de grupos",
@@ -65,12 +68,13 @@ fun GroupPredictionsScreen(repository: PorraRepository, config: SupabaseConfig?,
         }
     }
 
-    repository.groups().forEach { group ->
+    groups.forEach { group ->
         GroupPredictionCard(
             group = group,
             homeScores = PredictionDrafts.groupHomeScores,
             awayScores = PredictionDrafts.groupAwayScores,
             positions = PredictionDrafts.groupPositions,
+            orderError = if (group.code in duplicateGroupCodes) "No repitas equipos en el Grupo ${group.code}." else null,
             onHomeScoreChange = { matchId, value -> PredictionDrafts.groupHomeScores[matchId] = value },
             onAwayScoreChange = { matchId, value -> PredictionDrafts.groupAwayScores[matchId] = value },
             onPositionChange = { groupCode, position, value -> PredictionDrafts.groupPositions["$groupCode-$position"] = value },
@@ -78,7 +82,7 @@ fun GroupPredictionsScreen(repository: PorraRepository, config: SupabaseConfig?,
     }
 
     BestThirdPlacePredictionCard(
-        groups = repository.groups(),
+        groups = groups,
         selectedCodes = PredictionDrafts.groupThirdPlaces.filterValues { it }.keys,
         onToggle = { groupCode, checked -> PredictionDrafts.groupThirdPlaces[groupCode] = checked },
     )
@@ -99,6 +103,11 @@ fun GroupPredictionsScreen(repository: PorraRepository, config: SupabaseConfig?,
                 }
                 if (PredictionDrafts.groupName.isBlank() || PredictionDrafts.groupEmail.isBlank()) {
                     message = "Completa nombre y correo"
+                    messageError = true
+                    return@onClick
+                }
+                if (duplicateGroupCodes.isNotEmpty()) {
+                    message = "No repitas equipos en el orden final de los grupos: ${duplicateGroupCodes.joinToString()}"
                     messageError = true
                     return@onClick
                 }
@@ -193,10 +202,19 @@ private fun PaymentInstructions(settings: AdminSettings) {
             Text("Antes de que el administrador apruebe tu participacion, envia $price EUR por Bizum a $phone. Usa tu nombre y correo como referencia para que el admin pueda validar el pago.")
         }
         P(attrs = { classes("helper-text") }) {
-            Text("Si aun no estas aprobado, el primer intento registrara tu solicitud pendiente; despues de que el admin confirme el Bizum, vuelve a enviar tus predicciones.")
+            Text("Tu prediccion quedara registrada y pendiente hasta que el admin confirme el Bizum. Si ya enviaste esta fase con el mismo correo, no podras repetirla.")
         }
     }
 }
+
+private fun duplicateGroupCodes(groups: List<TournamentGroup>, positions: Map<String, String>): Set<String> = groups
+    .filter { group ->
+        val selected = (1..4)
+            .mapNotNull { pos -> positions["${group.code}-$pos"]?.takeIf { it.isNotBlank() } }
+        selected.size != selected.toSet().size
+    }
+    .map { it.code }
+    .toSet()
 
 private suspend fun collectAndSubmitGroups(
     config: SupabaseConfig,
@@ -321,7 +339,7 @@ private suspend fun fetchPost(config: SupabaseConfig, path: String, bodyStr: Str
         val res = window.fetch("${config.supabaseUrl}/functions/v1/$path", i).await()
         if (res.ok) {
             val payload: dynamic = res.json().await()
-            if (payload.ok as? Boolean == true) "Guardado correctamente" to true
+            if (payload.ok as? Boolean == true) (payload.message?.toString() ?: "Guardado correctamente") to true
             else (payload.error?.toString() ?: "Error desconocido") to false
         } else {
             val payload: dynamic = res.json().await()

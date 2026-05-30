@@ -316,7 +316,7 @@ async function findOrCreateParticipant(
   client: SupabaseClient,
   name: string,
   email: string,
-): Promise<{ error: string | null; participant: { id: string; approval_status: string } | null }> {
+): Promise<{ error: string | null; participant: { id: string; approval_status: string } | null; created: boolean }> {
   const normalizedEmail = email.toLowerCase().trim();
 
   const { data: existing, error: lookupError } = await client
@@ -326,25 +326,29 @@ async function findOrCreateParticipant(
     .maybeSingle();
 
   if (lookupError) {
-    return { error: `Error al buscar participante: ${lookupError.message}`, participant: null };
+    return { error: `Error al buscar participante: ${lookupError.message}`, participant: null, created: false };
   }
 
   if (!existing) {
-    const { error: insertError } = await client.from("participants").insert({
-      name: name.trim(),
-      email: email.trim(),
-      normalized_email: normalizedEmail,
-      approval_status: "pending",
-    });
+    const { data: created, error: insertError } = await client
+      .from("participants")
+      .insert({
+        name: name.trim(),
+        email: email.trim(),
+        normalized_email: normalizedEmail,
+        approval_status: "pending",
+      })
+      .select("id, approval_status")
+      .single();
 
-    if (insertError) {
-      return { error: `Error al crear participante: ${insertError.message}`, participant: null };
+    if (insertError || !created) {
+      return { error: `Error al crear participante: ${insertError?.message}`, participant: null, created: false };
     }
 
-    return { error: "Participante no encontrado o no aprobado", participant: null };
+    return { error: null, participant: created, created: true };
   }
 
-  return { error: null, participant: existing };
+  return { error: null, participant: existing, created: false };
 }
 
 async function validateMatches(
@@ -401,6 +405,20 @@ async function validateGroupsAndTeams(
     if (!existingTeamIds.has(id)) return `El team_id '${id}' no existe.`;
   }
 
+  const { data: groupTeams, error: groupTeamError } = await client
+    .from("group_teams")
+    .select("group_id, team_id")
+    .in("group_id", groupIds);
+
+  if (groupTeamError) return `Error al validar equipos por grupo: ${groupTeamError.message}`;
+
+  const validPairs = new Set((groupTeams ?? []).map((row) => `${row.group_id}:${row.team_id}`));
+  for (const position of positions) {
+    if (!validPairs.has(`${position.group_id}:${position.team_id}`)) {
+      return `El equipo seleccionado no pertenece al grupo indicado.`;
+    }
+  }
+
   return null;
 }
 
@@ -424,7 +442,7 @@ serve(async (req: Request): Promise<Response> => {
     const emailErr = validateNonBlank(body.participant_email, "participant_email");
     if (emailErr) return jsonResponse({ ok: false, error: emailErr }, 400);
 
-    const { error: participantError, participant } = await findOrCreateParticipant(
+    const { error: participantError, participant, created } = await findOrCreateParticipant(
       client,
       body.participant_name,
       body.participant_email,
@@ -432,12 +450,11 @@ serve(async (req: Request): Promise<Response> => {
     if (participantError) return jsonResponse({ ok: false, error: participantError }, 400);
     if (!participant) return jsonResponse({ ok: false, error: "Participante no encontrado." }, 400);
 
-    if (participant.approval_status !== "approved") {
+    if (participant.approval_status === "rejected") {
       return jsonResponse(
         {
           ok: false,
-          error:
-            "Tu participación aún no ha sido aprobada. Contacta con el administrador.",
+          error: "Tu participación fue rechazada. Contacta con el administrador.",
         },
         403,
       );
@@ -531,6 +548,17 @@ serve(async (req: Request): Promise<Response> => {
       positionsByGroup.set(p.group_id, rows);
     }
 
+    const { data: submittedGroups, error: submittedGroupsError } = await client
+      .from("tournament_groups")
+      .select("id, code")
+      .in("id", [...positionsByGroup.keys()]);
+
+    if (submittedGroupsError) {
+      return jsonResponse({ ok: false, error: `Error al validar grupos: ${submittedGroupsError.message}` }, 400);
+    }
+
+    const groupLabels = new Map((submittedGroups ?? []).map((g) => [g.id, `Grupo ${g.code}`]));
+
     if (positionsByGroup.size !== 12) {
       return jsonResponse({ ok: false, error: "Debes enviar posiciones para los 12 grupos." }, 400);
     }
@@ -539,7 +567,7 @@ serve(async (req: Request): Promise<Response> => {
       const teams = new Set(positions.map((p) => p.team_id));
       const ranks = new Set(positions.map((p) => p.predicted_position));
       if (positions.length !== 4 || teams.size !== 4 || ranks.size !== 4) {
-        return jsonResponse({ ok: false, error: `El grupo ${groupId} debe tener 4 equipos y 4 posiciones únicas.` }, 400);
+        return jsonResponse({ ok: false, error: `${groupLabels.get(groupId) ?? "Cada grupo"} debe tener 4 equipos y 4 posiciones únicas.` }, 400);
       }
     }
 
@@ -650,7 +678,11 @@ serve(async (req: Request): Promise<Response> => {
       receipt,
     );
 
-    return jsonResponse({ ok: true, submission_id: submissionId });
+    const pendingMessage = created || participant.approval_status !== "approved"
+      ? "Predicción recibida. Queda pendiente de aprobación del pago por el administrador."
+      : "Predicción guardada correctamente.";
+
+    return jsonResponse({ ok: true, submission_id: submissionId, message: pendingMessage });
   } catch (err) {
     console.error("Unexpected error:", err);
     const message = err instanceof Error ? err.message : "Error interno del servidor.";

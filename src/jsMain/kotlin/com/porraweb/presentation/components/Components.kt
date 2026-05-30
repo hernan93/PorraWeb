@@ -190,6 +190,7 @@ fun GroupPredictionCard(
     homeScores: Map<String, String> = emptyMap(),
     awayScores: Map<String, String> = emptyMap(),
     positions: Map<String, String> = emptyMap(),
+    orderError: String? = null,
     onHomeScoreChange: (String, String) -> Unit = { _, _ -> },
     onAwayScoreChange: (String, String) -> Unit = { _, _ -> },
     onPositionChange: (String, String, String) -> Unit = { _, _, _ -> },
@@ -208,6 +209,9 @@ fun GroupPredictionCard(
             onAwayScoreChange = onAwayScoreChange,
         )
         H3 { Text("Orden final esperado") }
+        orderError?.let {
+            P(attrs = { classes("error-text", "group-order-error") }) { Text(it) }
+        }
         Div(attrs = { classes("ranking-inputs") }) {
             TeamSelectField("1er puesto", group.teams, value = positions["${group.code}-1"].orEmpty(), elementId = "pos-${group.code}-1") { onPositionChange(group.code, "1", it) }
             TeamSelectField("2do puesto", group.teams, value = positions["${group.code}-2"].orEmpty(), elementId = "pos-${group.code}-2") { onPositionChange(group.code, "2", it) }
@@ -298,12 +302,12 @@ fun MatchPredictionTable(
 }
 
 @Composable
-fun NumberInput(elementId: String = "", value: String = "", onValueChange: (String) -> Unit = {}) {
+fun NumberInput(elementId: String = "", fieldValue: String = "", onValueChange: (String) -> Unit = {}) {
     Input(type = InputType.Number, attrs = {
         classes("score-input")
         attr("min", "0")
         if (elementId.isNotEmpty()) id(elementId)
-        attr("value", value)
+        value(fieldValue)
         onInput { e -> onValueChange(e.target.value) }
     })
 }

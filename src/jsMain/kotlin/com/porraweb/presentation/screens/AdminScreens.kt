@@ -273,6 +273,8 @@ private fun RealParticipantTable(
         return
     }
 
+    val hasPendingActions = participants.any { it.approvalStatus == "pending" }
+
     Table(attrs = { classes("table") }) {
         Thead {
             Tr {
@@ -280,7 +282,7 @@ private fun RealParticipantTable(
                 Th { Text("Correo") }
                 Th { Text("Pago") }
                 Th { Text("Estado") }
-                Th { Text("Accion") }
+                if (hasPendingActions) Th { Text("Accion") }
             }
         }
         Tbody {
@@ -291,7 +293,7 @@ private fun RealParticipantTable(
                     Td { Text(participant.email) }
                     Td { Span(attrs = { classes("status-pill") }) { Text(paymentLabel(participant.paymentStatus)) } }
                     Td { Text(approvalLabel(participant.approvalStatus)) }
-                    Td {
+                    if (hasPendingActions) Td {
                         if (participant.approvalStatus == "pending") {
                             Button(attrs = {
                                 classes("button", "button-small")
@@ -324,6 +326,8 @@ private fun RealParticipantTable(
                             }) {
                                 Text("Rechazar")
                             }
+                        } else {
+                            Span(attrs = { classes("status-pill") }) { Text("Sin acciones") }
                         }
                     }
                 }

@@ -7,7 +7,9 @@ import com.porraweb.presentation.components.PageHeader
 import com.porraweb.presentation.components.Panel
 import com.porraweb.presentation.components.RankingTable
 import com.porraweb.presentation.components.StatCard
+import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Section
+import org.jetbrains.compose.web.dom.Text
 
 @Composable
 fun DashboardScreen(repository: PorraRepository) {
@@ -25,6 +27,9 @@ fun DashboardScreen(repository: PorraRepository) {
     }
 
     Panel(title = "Ranking") {
+        P(attrs = { classes("pot-banner") }) {
+            Text("Bote actual: ${summary.prizePotEur} EUR (${summary.participationPriceEur} EUR por participante aprobado)")
+        }
         RankingTable(repository.ranking())
     }
 

@@ -423,11 +423,29 @@ body {
     font-weight: 800;
 }
 
+.group-order-error {
+    display: inline-flex;
+    padding: 8px 10px;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    background: #fef2f2;
+}
+
 .success-text {
     margin: 10px 0 0;
     color: #0f766e;
     font-size: 14px;
     font-weight: 800;
+}
+
+.pot-banner {
+    display: inline-flex;
+    margin: 0 0 14px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: #e7f8f5;
+    color: #0f766e;
+    font-weight: 900;
 }
 
 @media (max-width: 720px) {

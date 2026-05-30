@@ -12,7 +12,7 @@ const PHASE_REQUIRED_COUNTS: Record<string, number> = {
 const VALID_KNOCKOUT_PHASES = new Set(Object.keys(PHASE_REQUIRED_COUNTS));
 
 const PHASE_LABELS: Record<string, string> = {
-  round_32: "Dieciseisavos",
+  round_32: "Ronda de 32",
   round_16: "Octavos",
   quarter_final: "Cuartos de final",
   semi_final: "Semifinales",
@@ -52,6 +52,25 @@ function teamName(teamId: string | null | undefined, teams: Map<string, string>,
   return teams.get(teamId) ?? fallback;
 }
 
+interface MatchInfo {
+  match_number: number | null;
+  phase: string;
+  home_team_id: string | null;
+  away_team_id: string | null;
+  home_slot: string | null;
+  away_slot: string | null;
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function slotLabel(slotCode: string, matches: Map<string, MatchInfo>, slotNumber: number): string {
+  const match = matches.get(slotCode);
+  if (match?.match_number) return `Partido ${match.match_number}`;
+  return isUuid(slotCode) ? `Casilla ${slotNumber}` : slotCode;
+}
+
 async function buildKnockoutReceipt(client: SupabaseClient, body: RequestBody): Promise<EmailReceipt> {
   const teamIds = new Set<string>([
     ...body.knockout_predictions.map((p) => p.predicted_team_id),
@@ -78,14 +97,7 @@ async function buildKnockoutReceipt(client: SupabaseClient, body: RequestBody): 
     teams.set(team.id, team.fifa_code ? `${team.name} (${team.fifa_code})` : team.name);
   }
 
-  const matches = new Map<string, {
-    match_number: number | null;
-    phase: string;
-    home_team_id: string | null;
-    away_team_id: string | null;
-    home_slot: string | null;
-    away_slot: string | null;
-  }>();
+  const matches = new Map<string, MatchInfo>();
   for (const match of matchesResult.data ?? []) {
     matches.set(match.id, match);
   }
@@ -93,15 +105,27 @@ async function buildKnockoutReceipt(client: SupabaseClient, body: RequestBody): 
   const phaseOrder = Object.keys(PHASE_REQUIRED_COUNTS);
   const orderedBracket = [...body.knockout_predictions].sort((a, b) => {
     const phaseDiff = phaseOrder.indexOf(a.phase) - phaseOrder.indexOf(b.phase);
-    return phaseDiff !== 0 ? phaseDiff : a.slot_code.localeCompare(b.slot_code);
+    const matchA = matches.get(a.slot_code)?.match_number ?? 999;
+    const matchB = matches.get(b.slot_code)?.match_number ?? 999;
+    return phaseDiff !== 0 ? phaseDiff : matchA - matchB || a.slot_code.localeCompare(b.slot_code);
   });
 
-  const bracketTextLines = orderedBracket.map((prediction) => {
-    return `${PHASE_LABELS[prediction.phase] ?? prediction.phase} - ${prediction.slot_code}: ${teamName(prediction.predicted_team_id, teams)}`;
+  const phaseSlotCounts = new Map<string, number>();
+  const bracketItems = orderedBracket.map((prediction) => {
+    const slotNumber = (phaseSlotCounts.get(prediction.phase) ?? 0) + 1;
+    phaseSlotCounts.set(prediction.phase, slotNumber);
+    return {
+      prediction,
+      slot: slotLabel(prediction.slot_code, matches, slotNumber),
+    };
   });
 
-  const bracketRows = orderedBracket.map((prediction) => {
-    return `<tr><td>${escapeHtml(PHASE_LABELS[prediction.phase] ?? prediction.phase)}</td><td>${escapeHtml(prediction.slot_code)}</td><td>${escapeHtml(teamName(prediction.predicted_team_id, teams))}</td></tr>`;
+  const bracketTextLines = bracketItems.map(({ prediction, slot }) => {
+    return `${PHASE_LABELS[prediction.phase] ?? prediction.phase} - ${slot}: ${teamName(prediction.predicted_team_id, teams)}`;
+  });
+
+  const bracketRows = bracketItems.map(({ prediction, slot }) => {
+    return `<tr><td>${escapeHtml(PHASE_LABELS[prediction.phase] ?? prediction.phase)}</td><td>${escapeHtml(slot)}</td><td>${escapeHtml(teamName(prediction.predicted_team_id, teams))}</td></tr>`;
   }).join("");
 
   const orderedMatches = [...body.knockout_match_predictions].sort((a, b) => {
@@ -294,6 +318,44 @@ interface RequestBody {
   knockout_match_predictions: KnockoutMatchPrediction[];
 }
 
+async function findOrCreateParticipant(
+  supabase: SupabaseClient,
+  name: string,
+  email: string,
+): Promise<{ participant: { id: string; approval_status: string } | null; created: boolean; error: string | null }> {
+  const normalizedEmail = email.toLowerCase().trim();
+  const { data: existing, error: lookupError } = await supabase
+    .from("participants")
+    .select("id, approval_status")
+    .eq("normalized_email", normalizedEmail)
+    .maybeSingle();
+
+  if (lookupError) {
+    return { participant: null, created: false, error: "Database error looking up participant" };
+  }
+
+  if (existing) {
+    return { participant: existing, created: false, error: null };
+  }
+
+  const { data: created, error: insertError } = await supabase
+    .from("participants")
+    .insert({
+      name,
+      email,
+      normalized_email: normalizedEmail,
+      approval_status: "pending",
+    })
+    .select("id, approval_status")
+    .single();
+
+  if (insertError || !created) {
+    return { participant: null, created: false, error: "Failed to create participant" };
+  }
+
+  return { participant: created, created: true, error: null };
+}
+
 function validateRequest(body: unknown): RequestBody {
   if (!body || typeof body !== "object") {
     throw new Error("Invalid JSON body");
@@ -372,25 +434,16 @@ Deno.serve(async (req: Request) => {
     });
 
     const body = validateRequest(raw);
-    const normalizedEmail = body.participant_email.toLowerCase().trim();
+    const { participant, created, error: participantErr } = await findOrCreateParticipant(
+      supabase,
+      body.participant_name,
+      body.participant_email,
+    );
 
-    // 1. Look up participant
-    const { data: participant, error: participantErr } = await supabase
-      .from("participants")
-      .select("id, approval_status")
-      .eq("normalized_email", normalizedEmail)
-      .maybeSingle();
-
-    if (participantErr) {
-      return json({ ok: false, error: "Database error looking up participant" }, 500);
-    }
-
-    if (!participant) {
-      return json({ ok: false, error: "Participant not found" }, 404);
-    }
-
-    if (participant.approval_status !== "approved") {
-      return json({ ok: false, error: "Participant is not approved" }, 403);
+    if (participantErr) return json({ ok: false, error: participantErr }, 500);
+    if (!participant) return json({ ok: false, error: "Participant not found" }, 500);
+    if (participant.approval_status === "rejected") {
+      return json({ ok: false, error: "Participant was rejected" }, 403);
     }
 
     // 2. Check knockout form status
@@ -564,7 +617,11 @@ Deno.serve(async (req: Request) => {
       receipt,
     );
 
-    return json({ ok: true, submission_id: submissionId });
+    const message = created || participant.approval_status !== "approved"
+      ? "Predicción recibida. Queda pendiente de aprobación del pago por el administrador."
+      : "Predicción guardada correctamente.";
+
+    return json({ ok: true, submission_id: submissionId, message });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal server error";
     console.error("submit-knockouts error:", err);

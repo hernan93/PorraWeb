@@ -135,6 +135,8 @@ class SupabasePorraRepository(private val config: SupabaseConfig) : PorraReposit
             approvedParticipants = intOrNull(row?.approved_participants) ?: 0,
             updatedMatches = intOrNull(row?.updated_matches) ?: 0,
             currentPhase = text(row?.current_phase) ?: "Fase de grupos 2026",
+            participationPriceEur = text(row?.participation_price_eur) ?: "5",
+            prizePotEur = text(row?.prize_pot_eur) ?: "0",
         )
     }
 

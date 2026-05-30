@@ -149,6 +149,8 @@ object MockPorraRepository : PorraRepository {
         approvedParticipants = 12,
         updatedMatches = 8,
         currentPhase = "Fase de grupos 2026",
+        participationPriceEur = "5",
+        prizePotEur = "60",
     )
 
     override fun ranking(): List<RankingEntry> = listOf(
