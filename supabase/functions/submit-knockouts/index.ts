@@ -475,7 +475,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (existingSub) {
-      return json({ ok: false, error: "You already have a knockout submission" }, 409);
+      return json({ ok: false, error: "Ya tienes una predicción de eliminatorias enviada." }, 409);
     }
 
     // 4. Validate phases have correct counts
