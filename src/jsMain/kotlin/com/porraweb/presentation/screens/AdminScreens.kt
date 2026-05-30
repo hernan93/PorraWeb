@@ -64,8 +64,8 @@ fun AdminLoginScreen(authService: AdminAuthService) {
 
     Section(attrs = { classes("panel", "narrow") }) {
         H2 { Text("Iniciar sesion") }
-        TextField("Correo administrador", "admin@empresa.com", InputType.Email, value = email, onEnter = submitLogin) { email = it }
-        TextField("Contrasena", "", InputType.Password, value = password, onEnter = submitLogin) { password = it }
+        TextField("Correo administrador", "admin@empresa.com", InputType.Email, fieldValue = email, onEnter = submitLogin) { email = it }
+        TextField("Contrasena", "", InputType.Password, fieldValue = password, onEnter = submitLogin) { password = it }
 
         error?.let {
             P(attrs = { classes("error-text") }) { Text(it) }
@@ -221,9 +221,9 @@ fun AdminSettingsScreen(repository: PorraRepository, config: SupabaseConfig?, au
             value = knockoutsStatus,
             options = listOf("closed" to "Cerrada: ocultar Eliminatorias", "open" to "Abierta: mostrar Eliminatorias"),
         ) { knockoutsStatus = it }
-        TextField("Fecha limite grupos", "2026-06-10 18:00", value = groupDeadline) { groupDeadline = it }
-        TextField("Importe participacion (EUR)", "5", InputType.Number, value = participationPriceEur) { participationPriceEur = it }
-        TextField("Telefono Bizum para participantes", "+34 600 000 000", value = bizumPhone) { bizumPhone = it }
+        TextField("Fecha limite grupos", "2026-06-10 18:00", fieldValue = groupDeadline) { groupDeadline = it }
+        TextField("Importe participacion (EUR)", "5", InputType.Number, fieldValue = participationPriceEur) { participationPriceEur = it }
+        TextField("Telefono Bizum para participantes", "+34 600 000 000", fieldValue = bizumPhone) { bizumPhone = it }
         P(attrs = { classes("helper-text") }) {
             Text("Este numero se muestra en la pantalla de participacion para que el participante sepa donde enviar el Bizum antes de que lo apruebes.")
         }

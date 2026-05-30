@@ -15,6 +15,7 @@ import com.porraweb.domain.model.Team
 import com.porraweb.domain.model.TournamentGroup
 import com.porraweb.navigation.Route
 import org.jetbrains.compose.web.attributes.InputType
+import org.jetbrains.compose.web.attributes.value
 import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
@@ -124,7 +125,7 @@ fun TextField(
     label: String,
     placeholder: String,
     type: InputType<*> = InputType.Text,
-    value: String = "",
+    fieldValue: String = "",
     onEnter: () -> Unit = {},
     onValueChange: (String) -> Unit = {},
 ) {
@@ -133,7 +134,7 @@ fun TextField(
         Input(type = type, attrs = {
             classes("input")
             attr("placeholder", placeholder)
-            attr("value", value)
+            value(fieldValue)
             onInput { e -> onValueChange(e.target.value) }
             onKeyDown { e ->
                 if (e.key == "Enter") onEnter()
@@ -451,10 +452,10 @@ fun ParticipantApprovalTable(participants: List<PaymentParticipant>) {
 @Composable
 fun AdminSettingsForm(settings: AdminSettings) {
     FormGrid {
-        TextField("Estado fase de grupos", "", value = settings.groupsStatus)
-        TextField("Estado eliminatorias", "", value = settings.knockoutsStatus)
-        TextField("Fecha límite grupos", "", value = settings.groupDeadline)
-        TextField("Teléfono Bizum", "", value = settings.bizumPhone)
+        TextField("Estado fase de grupos", "", fieldValue = settings.groupsStatus)
+        TextField("Estado eliminatorias", "", fieldValue = settings.knockoutsStatus)
+        TextField("Fecha límite grupos", "", fieldValue = settings.groupDeadline)
+        TextField("Teléfono Bizum", "", fieldValue = settings.bizumPhone)
     }
 }
 

@@ -60,8 +60,8 @@ fun GroupPredictionsScreen(repository: PorraRepository, config: SupabaseConfig?,
 
     Panel(title = "Datos del participante") {
         FormGrid {
-            TextField("Nombre completo", "Ej. Andrea Mora", value = PredictionDrafts.groupName) { PredictionDrafts.groupName = it }
-            TextField("Correo", "nombre@empresa.com", InputType.Email, value = PredictionDrafts.groupEmail) { PredictionDrafts.groupEmail = it }
+            TextField("Nombre completo", "Ej. Andrea Mora", fieldValue = PredictionDrafts.groupName) { PredictionDrafts.groupName = it }
+            TextField("Correo", "nombre@empresa.com", InputType.Email, fieldValue = PredictionDrafts.groupEmail) { PredictionDrafts.groupEmail = it }
         }
     }
 
@@ -133,8 +133,8 @@ fun KnockoutPredictionsScreen(repository: PorraRepository, config: SupabaseConfi
 
     Panel(title = "Datos del participante") {
         FormGrid {
-            TextField("Nombre completo", "Igual que en fase de grupos", value = PredictionDrafts.knockoutName) { PredictionDrafts.knockoutName = it }
-            TextField("Correo aprobado", "nombre@empresa.com", InputType.Email, value = PredictionDrafts.knockoutEmail) { PredictionDrafts.knockoutEmail = it }
+            TextField("Nombre completo", "Igual que en fase de grupos", fieldValue = PredictionDrafts.knockoutName) { PredictionDrafts.knockoutName = it }
+            TextField("Correo aprobado", "nombre@empresa.com", InputType.Email, fieldValue = PredictionDrafts.knockoutEmail) { PredictionDrafts.knockoutEmail = it }
         }
     }
 
