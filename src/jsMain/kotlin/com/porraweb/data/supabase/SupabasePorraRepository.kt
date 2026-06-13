@@ -19,7 +19,9 @@ import com.porraweb.domain.model.TournamentGroup
 import com.porraweb.domain.repository.PorraRepository
 import kotlinx.browser.window
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.await
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 class SupabasePorraRepository(private val config: SupabaseConfig) : PorraRepository {
@@ -61,17 +63,28 @@ class SupabasePorraRepository(private val config: SupabaseConfig) : PorraReposit
                 val dashboardSummary = loadDashboardSummary()
                 if (dashboardSummary == state.dashboardSummary) return@runCatching
 
+                val rankingDeferred = scope.async { loadRanking() }
+                val resultsDeferred = scope.async { loadLatestResults() }
+
                 state = state.copy(
                     dashboardSummary = dashboardSummary,
-                    ranking = loadRanking(),
-                    latestResults = loadLatestResults(),
+                    ranking = rankingDeferred.await(),
+                    latestResults = resultsDeferred.await(),
                 )
             }.onFailure { error -> println("Supabase refresh failed: ${error.message}") }
         }
     }
 
-    private suspend fun loadRemoteData() {
-        val teams = fetchRows("teams?select=id,fifa_code,name&order=name.asc")
+    private suspend fun loadRemoteData() = coroutineScope {
+        val teamsDeferred = async { fetchRows("teams?select=id,fifa_code,name&order=name.asc") }
+        val groupRowsDeferred = async { fetchRows("tournament_groups?select=id,code,name&order=code.asc") }
+        val groupTeamsDeferred = async { fetchRows("group_teams?select=group_id,team_id") }
+        val matchesDeferred = async { fetchRows("matches?select=id,match_number,phase,group_id,home_team_id,away_team_id,home_slot,away_slot,status&order=match_number.asc") }
+        val dashboardDeferred = async { loadDashboardSummary() }
+        val rankingDeferred = async { loadRanking() }
+        val resultsDeferred = async { loadLatestResults() }
+
+        val teams = teamsDeferred.await()
             .mapNotNull { row ->
                 val fifaCode = text(row.fifa_code) ?: return@mapNotNull null
                 Team(
@@ -81,7 +94,7 @@ class SupabasePorraRepository(private val config: SupabaseConfig) : PorraReposit
             }
         val teamsById = teams.associateBy { it.id }
 
-        val groupRows = fetchRows("tournament_groups?select=id,code,name&order=code.asc")
+        val groupRows = groupRowsDeferred.await()
             .mapNotNull { row ->
                 DbGroup(
                     id = text(row.id) ?: return@mapNotNull null,
@@ -90,7 +103,7 @@ class SupabasePorraRepository(private val config: SupabaseConfig) : PorraReposit
             }
         val groupCodesById = groupRows.associate { it.id to it.code }
 
-        val groupTeams = fetchRows("group_teams?select=group_id,team_id")
+        val groupTeams = groupTeamsDeferred.await()
             .mapNotNull { row ->
                 DbGroupTeam(
                     groupId = text(row.group_id) ?: return@mapNotNull null,
@@ -99,7 +112,7 @@ class SupabasePorraRepository(private val config: SupabaseConfig) : PorraReposit
             }
             .groupBy { it.groupId }
 
-        val matches = fetchRows("matches?select=id,match_number,phase,group_id,home_team_id,away_team_id,home_slot,away_slot,status&order=match_number.asc")
+        val matches = matchesDeferred.await()
             .mapNotNull { row ->
                 DbMatch(
                     id = text(row.id) ?: return@mapNotNull null,
@@ -138,9 +151,9 @@ class SupabasePorraRepository(private val config: SupabaseConfig) : PorraReposit
             knockoutMatches = matches
                 .filter { it.phase != "group" }
                 .map { it.toKnockoutMatch(teamsById, teams) },
-            dashboardSummary = loadDashboardSummary(),
-            ranking = loadRanking(),
-            latestResults = loadLatestResults(),
+            dashboardSummary = dashboardDeferred.await(),
+            ranking = rankingDeferred.await(),
+            latestResults = resultsDeferred.await(),
         )
     }
 
