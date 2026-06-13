@@ -23,6 +23,7 @@ import org.jetbrains.compose.web.dom.H1
 import org.jetbrains.compose.web.dom.H2
 import org.jetbrains.compose.web.dom.H3
 import org.jetbrains.compose.web.dom.Header
+import org.jetbrains.compose.web.dom.Img
 import org.jetbrains.compose.web.dom.Input
 import org.jetbrains.compose.web.dom.Label
 import org.jetbrains.compose.web.dom.Li
@@ -419,13 +420,25 @@ fun RankingTable(entries: List<RankingEntry>) {
 fun MatchResults(results: List<MatchResult>) {
     results.forEach { result ->
         Div(attrs = { classes("match-result") }) {
-            Span { Text(result.homeTeam) }
+            Span(attrs = { classes("team-col") }) {
+                if (result.homeFifaCode != null) {
+                    Img(src = flagSrc(result.homeFifaCode), attrs = { classes("team-flag") })
+                }
+                Text(result.homeTeam)
+            }
             Span(attrs = { classes("score-pill") }) { Text(result.score) }
-            Span { Text(result.awayTeam) }
+            Span(attrs = { classes("team-col") }) {
+                if (result.awayFifaCode != null) {
+                    Img(src = flagSrc(result.awayFifaCode), attrs = { classes("team-flag") })
+                }
+                Text(result.awayTeam)
+            }
             Span(attrs = { classes("status-pill") }) { Text(result.status) }
         }
     }
 }
+
+private fun flagSrc(fifaCode: String): String = "/flags/${fifaCode.lowercase()}.svg"
 
 @Composable
 fun ParticipantApprovalTable(participants: List<PaymentParticipant>) {

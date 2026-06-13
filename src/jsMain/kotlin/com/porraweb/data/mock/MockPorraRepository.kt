@@ -162,10 +162,10 @@ object MockPorraRepository : PorraRepository {
     )
 
     override fun latestResults(): List<MatchResult> = listOf(
-        MatchResult("México", "2 - 1", "Sudáfrica", "Finalizado"),
-        MatchResult("Corea del Sur", "1 - 1", "República Checa", "Finalizado"),
-        MatchResult("Alemania", "-", "Ecuador", "Pendiente"),
-        MatchResult("España", "-", "Uruguay", "Pendiente"),
+        MatchResult("México", "MEX", "2 - 1", "Sudáfrica", "RSA", "Finalizado"),
+        MatchResult("Corea del Sur", "KOR", "1 - 1", "República Checa", "CZE", "Finalizado"),
+        MatchResult("Alemania", "GER", "-", "Ecuador", "ECU", "Pendiente"),
+        MatchResult("España", "ESP", "-", "Uruguay", "URU", "Pendiente"),
     )
 
     override fun pendingParticipants(): List<PaymentParticipant> = listOf(

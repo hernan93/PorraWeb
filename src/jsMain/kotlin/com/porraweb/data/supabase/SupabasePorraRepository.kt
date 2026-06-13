@@ -156,8 +156,10 @@ class SupabasePorraRepository(private val config: SupabaseConfig) : PorraReposit
             val awayFifaCode = text(row.away_fifa_code)
             MatchResult(
                 homeTeam = homeFifaCode?.let { TeamNamesEs.es(it) } ?: text(row.home_team) ?: return@mapNotNull null,
+                homeFifaCode = homeFifaCode,
                 score = text(row.score) ?: "-",
                 awayTeam = awayFifaCode?.let { TeamNamesEs.es(it) } ?: text(row.away_team) ?: return@mapNotNull null,
+                awayFifaCode = awayFifaCode,
                 status = text(row.status) ?: "Pendiente",
             )
         }

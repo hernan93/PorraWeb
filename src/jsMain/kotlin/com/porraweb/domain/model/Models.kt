@@ -58,8 +58,10 @@ data class DashboardSummary(
 
 data class MatchResult(
     val homeTeam: String,
+    val homeFifaCode: String? = null,
     val score: String,
     val awayTeam: String,
+    val awayFifaCode: String? = null,
     val status: String,
 )
 

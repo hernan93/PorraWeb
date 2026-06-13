@@ -1,0 +1,18 @@
+name: Sync FIFA Results
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync FIFA matches and recalculate scores
+        run: |
+          curl -s -X POST \
+            https://xkdggawpuldcdfweanzy.supabase.co/functions/v1/sync-fifa-matches \
+            -H "Content-Type: application/json" \
+            -H "x-sync-secret: ${{ secrets.SYNC_FIFA_SECRET }}" \
+            -w "\nHTTP %{http_code}"
