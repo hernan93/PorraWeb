@@ -58,8 +58,11 @@ class SupabasePorraRepository(private val config: SupabaseConfig) : PorraReposit
     override fun refresh() {
         scope.launch {
             runCatching {
+                val dashboardSummary = loadDashboardSummary()
+                if (dashboardSummary == state.dashboardSummary) return@runCatching
+
                 state = state.copy(
-                    dashboardSummary = loadDashboardSummary(),
+                    dashboardSummary = dashboardSummary,
                     ranking = loadRanking(),
                     latestResults = loadLatestResults(),
                 )

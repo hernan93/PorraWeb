@@ -1,6 +1,7 @@
 package com.porraweb.presentation.screens
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import com.porraweb.domain.repository.PorraRepository
 import com.porraweb.presentation.components.MatchResults
 import com.porraweb.presentation.components.PageHeader
@@ -16,11 +17,14 @@ import org.jetbrains.compose.web.dom.Text
 fun DashboardScreen(repository: PorraRepository) {
     val summary = repository.dashboardSummary()
 
-    window.setInterval({ repository.refresh() }, 30_000)
+    DisposableEffect(repository) {
+        val intervalId = window.setInterval({ repository.refresh() }, 30_000)
+        onDispose { window.clearInterval(intervalId) }
+    }
 
     PageHeader(
         title = "Dashboard general",
-        subtitle = "Ranking, resultados y estado de la porra. Este link se enviara por correo a los participantes.",
+        subtitle = "Ranking, resultados y estado de la porra.",
     )
 
     Section(attrs = { classes("stats-grid") }) {

@@ -540,31 +540,73 @@ body {
 }
 
 .match-result {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
-    gap: 8px;
-    padding: 13px 0;
-    border-bottom: 1px solid #e7edf5;
-    flex-wrap: wrap;
+    gap: 18px;
+    padding: 18px 14px;
+    border: 1px solid #e7edf5;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    margin-bottom: 12px;
 }
 
 .match-result:last-child {
-    border-bottom: 0;
+    margin-bottom: 0;
 }
 
 .team-flag {
-    width: 22px;
-    height: 14px;
-    border-radius: 2px;
+    width: 58px;
+    height: 42px;
+    border-radius: 8px;
     object-fit: cover;
     flex-shrink: 0;
+    box-shadow: 0 3px 8px rgba(15, 23, 42, 0.18);
 }
 
-.team-col {
+.match-team {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-width: 0;
+    text-align: center;
+}
+
+.match-team-name {
+    color: #0f172a;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.15;
+}
+
+.match-score {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 130px;
+}
+
+.match-score-line {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    min-width: 0;
+    justify-content: center;
+    gap: 26px;
+    color: #111827;
+    font-size: clamp(38px, 6vw, 64px);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
+}
+
+.match-score-separator {
+    color: #6b7280;
+    font-size: 0.72em;
+    font-weight: 800;
 }
 
 .score-pill,
@@ -618,6 +660,25 @@ body {
     }
 
     .match-result {
-        grid-template-columns: 1fr auto;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        gap: 10px;
+        padding: 16px 10px;
+    }
+
+    .team-flag {
+        width: 46px;
+        height: 34px;
+    }
+
+    .match-team-name {
+        font-size: 15px;
+    }
+
+    .match-score {
+        min-width: 92px;
+    }
+
+    .match-score-line {
+        gap: 14px;
     }
 }

@@ -30,6 +30,10 @@ tasks.named("jsBrowserProductionWebpack") {
         resourcesDir.listFiles()?.filter { it.extension in listOf("html", "css", "ico", "png", "svg", "js") }?.forEach {
             it.copyTo(File(outputDir, it.name), overwrite = true)
         }
+        resourcesDir.resolve("flags").takeIf { it.exists() }?.copyRecursively(
+            target = File(outputDir, "flags"),
+            overwrite = true,
+        )
 
         File(outputDir, "config.js").writeText(
             """
