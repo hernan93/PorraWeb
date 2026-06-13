@@ -438,7 +438,25 @@ fun MatchResults(results: List<MatchResult>) {
     }
 }
 
-private fun flagSrc(fifaCode: String): String = "/flags/${fifaCode.lowercase()}.svg"
+private fun flagSrc(fifaCode: String): String {
+    val iso = fifaToIso[fifaCode] ?: fifaCode.lowercase()
+    return "https://flagcdn.com/w40/$iso.svg"
+}
+
+private val fifaToIso = mapOf(
+    "ALG" to "dz", "ARG" to "ar", "AUS" to "au", "AUT" to "at",
+    "BEL" to "be", "BIH" to "ba", "BRA" to "br", "CPV" to "cv",
+    "CAN" to "ca", "COL" to "co", "COD" to "cd", "CIV" to "ci",
+    "CRO" to "hr", "CUW" to "cw", "CZE" to "cz", "ECU" to "ec",
+    "EGY" to "eg", "ENG" to "gb-eng", "FRA" to "fr", "GER" to "de",
+    "GHA" to "gh", "HAI" to "ht", "IRN" to "ir", "IRQ" to "iq",
+    "JPN" to "jp", "JOR" to "jo", "KOR" to "kr", "MEX" to "mx",
+    "MAR" to "ma", "NED" to "nl", "NZL" to "nz", "NOR" to "no",
+    "PAN" to "pa", "PAR" to "py", "POR" to "pt", "QAT" to "qa",
+    "KSA" to "sa", "SCO" to "gb-sct", "SEN" to "sn", "RSA" to "za",
+    "ESP" to "es", "SWE" to "se", "SUI" to "ch", "TUN" to "tn",
+    "TUR" to "tr", "URU" to "uy", "USA" to "us", "UZB" to "uz",
+)
 
 @Composable
 fun ParticipantApprovalTable(participants: List<PaymentParticipant>) {

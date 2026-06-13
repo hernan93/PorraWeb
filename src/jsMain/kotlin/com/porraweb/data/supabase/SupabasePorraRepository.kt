@@ -55,6 +55,18 @@ class SupabasePorraRepository(private val config: SupabaseConfig) : PorraReposit
 
     override fun adminSettings(): AdminSettings = MockPorraRepository.adminSettings()
 
+    override fun refresh() {
+        scope.launch {
+            runCatching {
+                state = state.copy(
+                    dashboardSummary = loadDashboardSummary(),
+                    ranking = loadRanking(),
+                    latestResults = loadLatestResults(),
+                )
+            }.onFailure { error -> println("Supabase refresh failed: ${error.message}") }
+        }
+    }
+
     private suspend fun loadRemoteData() {
         val teams = fetchRows("teams?select=id,fifa_code,name&order=name.asc")
             .mapNotNull { row ->

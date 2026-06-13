@@ -24,4 +24,5 @@ interface PorraRepository {
     fun latestResults(): List<MatchResult>
     fun pendingParticipants(): List<PaymentParticipant>
     fun adminSettings(): AdminSettings
+    fun refresh() {}
 }

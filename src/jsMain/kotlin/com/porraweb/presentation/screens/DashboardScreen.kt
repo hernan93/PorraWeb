@@ -7,6 +7,7 @@ import com.porraweb.presentation.components.PageHeader
 import com.porraweb.presentation.components.Panel
 import com.porraweb.presentation.components.RankingTable
 import com.porraweb.presentation.components.StatCard
+import kotlinx.browser.window
 import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Section
 import org.jetbrains.compose.web.dom.Text
@@ -14,6 +15,8 @@ import org.jetbrains.compose.web.dom.Text
 @Composable
 fun DashboardScreen(repository: PorraRepository) {
     val summary = repository.dashboardSummary()
+
+    window.setInterval({ repository.refresh() }, 30_000)
 
     PageHeader(
         title = "Dashboard general",
