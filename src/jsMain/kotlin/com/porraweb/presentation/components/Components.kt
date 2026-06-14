@@ -439,10 +439,9 @@ fun MatchResults(results: List<MatchResult>) {
                     Text(awayScore)
                 }
                 Span(attrs = { classes("status-pill") }) {
-                    Text(result.status)
+                    Span { Text(result.status) }
                     if (result.kickoffAt != null) {
-                        Br()
-                        Text(result.kickoffAt)
+                        Span { Text(result.kickoffAt) }
                     }
                 }
             }
