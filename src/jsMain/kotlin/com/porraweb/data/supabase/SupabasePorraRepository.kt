@@ -178,10 +178,15 @@ class SupabasePorraRepository(private val config: SupabaseConfig) : PorraReposit
             )
         }
 
-    private suspend fun loadLatestResults(): List<MatchResult> = fetchRows("public_latest_results?select=*&limit=6")
+    private suspend fun loadLatestResults(): List<MatchResult> = fetchRows("public_latest_results?select=*&limit=10")
         .mapNotNull { row ->
             val homeFifaCode = text(row.home_fifa_code)
             val awayFifaCode = text(row.away_fifa_code)
+            val matchStatus = text(row.match_status)
+            val rawKickoff = text(row.kickoff_at)
+            val localDate = if (matchStatus == "finished" && rawKickoff != null) {
+                formatLocalDate(rawKickoff)
+            } else null
             MatchResult(
                 homeTeam = homeFifaCode?.let { TeamNamesEs.es(it) } ?: text(row.home_team) ?: return@mapNotNull null,
                 homeFifaCode = homeFifaCode,
@@ -189,8 +194,19 @@ class SupabasePorraRepository(private val config: SupabaseConfig) : PorraReposit
                 awayTeam = awayFifaCode?.let { TeamNamesEs.es(it) } ?: text(row.away_team) ?: return@mapNotNull null,
                 awayFifaCode = awayFifaCode,
                 status = text(row.status) ?: "Pendiente",
+                kickoffAt = localDate,
             )
         }
+
+    private fun formatLocalDate(isoString: String): String {
+        val d: dynamic = js("new Date(isoString)")
+        val day = (d.getDate() as Int).toString().padStart(2, '0')
+        val month = ((d.getMonth() as Int) + 1).toString().padStart(2, '0')
+        val year = (d.getFullYear() as Int).toString()
+        val hours = (d.getHours() as Int).toString().padStart(2, '0')
+        val minutes = (d.getMinutes() as Int).toString().padStart(2, '0')
+        return "$day/$month/$year $hours:$minutes"
+    }
 
     private suspend fun fetchRows(path: String): List<dynamic> {
         val response = window.fetch("${config.supabaseUrl}/rest/v1/$path", requestInit()).await()

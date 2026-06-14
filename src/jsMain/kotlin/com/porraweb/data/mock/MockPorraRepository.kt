@@ -162,8 +162,8 @@ object MockPorraRepository : PorraRepository {
     )
 
     override fun latestResults(): List<MatchResult> = listOf(
-        MatchResult("México", "MEX", "2 - 1", "Sudáfrica", "RSA", "Finalizado"),
-        MatchResult("Corea del Sur", "KOR", "1 - 1", "República Checa", "CZE", "Finalizado"),
+        MatchResult("México", "MEX", "2 - 1", "Sudáfrica", "RSA", "Finalizado", "14/06/2026 10:30"),
+        MatchResult("Corea del Sur", "KOR", "1 - 1", "República Checa", "CZE", "Finalizado", "14/06/2026 08:00"),
         MatchResult("Alemania", "GER", "-", "Ecuador", "ECU", "Pendiente"),
         MatchResult("España", "ESP", "-", "Uruguay", "URU", "Pendiente"),
     )

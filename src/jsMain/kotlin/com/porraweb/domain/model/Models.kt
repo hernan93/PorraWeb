@@ -63,6 +63,7 @@ data class MatchResult(
     val awayTeam: String,
     val awayFifaCode: String? = null,
     val status: String,
+    val kickoffAt: String? = null,
 )
 
 data class PaymentParticipant(
