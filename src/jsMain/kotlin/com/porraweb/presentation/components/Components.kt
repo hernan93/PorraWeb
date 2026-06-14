@@ -17,6 +17,7 @@ import com.porraweb.navigation.Route
 import org.jetbrains.compose.web.attributes.InputType
 import org.jetbrains.compose.web.attributes.value
 import org.jetbrains.compose.web.dom.A
+import org.jetbrains.compose.web.dom.Br
 import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
@@ -437,9 +438,12 @@ fun MatchResults(results: List<MatchResult>) {
                     Span(attrs = { classes("match-score-separator") }) { Text("-") }
                     Text(awayScore)
                 }
-                Span(attrs = { classes("status-pill") }) { Text(result.status) }
-                if (result.kickoffAt != null) {
-                    Span(attrs = { classes("match-date") }) { Text(result.kickoffAt) }
+                Span(attrs = { classes("status-pill") }) {
+                    Text(result.status)
+                    if (result.kickoffAt != null) {
+                        Br()
+                        Text(result.kickoffAt)
+                    }
                 }
             }
 
