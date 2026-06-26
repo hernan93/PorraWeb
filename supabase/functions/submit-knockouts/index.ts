@@ -312,7 +312,7 @@ interface KnockoutMatchPrediction {
 }
 
 interface RequestBody {
-  participant_name: string;
+  participant_name?: string;
   participant_email: string;
   knockout_predictions: KnockoutPrediction[];
   knockout_match_predictions: KnockoutMatchPrediction[];
@@ -326,34 +326,24 @@ async function findOrCreateParticipant(
   const normalizedEmail = email.toLowerCase().trim();
   const { data: existing, error: lookupError } = await supabase
     .from("participants")
-    .select("id, approval_status")
+    .select("id, approval_status, name")
     .eq("normalized_email", normalizedEmail)
     .maybeSingle();
 
   if (lookupError) {
-    return { participant: null, created: false, error: "Error de base de datos al buscar participante" };
+    console.error("findOrCreateParticipant lookup error:", lookupError.message);
+    return { participant: null, created: false, error: "Error al buscar participante. Intenta de nuevo." };
   }
 
-  if (existing) {
-    return { participant: existing, created: false, error: null };
+  if (!existing) {
+    return { participant: null, created: false, error: "No encontramos una participacion con ese correo. Debes haber enviado la fase de grupos primero y estar aprobado." };
   }
 
-  const { data: created, error: insertError } = await supabase
-    .from("participants")
-    .insert({
-      name,
-      email,
-      normalized_email: normalizedEmail,
-      approval_status: "pending",
-    })
-    .select("id, approval_status")
-    .single();
-
-  if (insertError || !created) {
-    return { participant: null, created: false, error: "Error de base de datos al crear participante" };
+  if (existing.approval_status !== "approved") {
+    return { participant: null, created: false, error: "Tu participacion no esta aprobada. Contacta con el administrador." };
   }
 
-  return { participant: created, created: true, error: null };
+  return { participant: existing, created: false, error: null };
 }
 
 function validateRequest(body: unknown): RequestBody {
@@ -362,10 +352,6 @@ function validateRequest(body: unknown): RequestBody {
   }
 
   const b = body as Record<string, unknown>;
-
-  if (typeof b.participant_name !== "string" || !b.participant_name.trim()) {
-    throw new Error("El campo participant_name es obligatorio");
-  }
 
   if (typeof b.participant_email !== "string" || !b.participant_email.trim()) {
     throw new Error("El campo participant_email es obligatorio");
@@ -407,7 +393,7 @@ function validateRequest(body: unknown): RequestBody {
   }
 
   return {
-    participant_name: b.participant_name.trim(),
+    participant_name: (typeof b.participant_name === "string" ? b.participant_name.trim() : ""),
     participant_email: b.participant_email.trim(),
     knockout_predictions: b.knockout_predictions as KnockoutPrediction[],
     knockout_match_predictions: b.knockout_match_predictions as KnockoutMatchPrediction[],

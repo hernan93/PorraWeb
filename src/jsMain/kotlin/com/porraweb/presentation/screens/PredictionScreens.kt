@@ -38,7 +38,6 @@ private object PredictionDrafts {
     val groupPositions = mutableStateMapOf<String, String>()
     val groupThirdPlaces = mutableStateMapOf<String, Boolean>()
 
-    var knockoutName by mutableStateOf("")
     var knockoutEmail by mutableStateOf("")
     val knockoutHomeScores = mutableStateMapOf<String, String>()
     val knockoutAwayScores = mutableStateMapOf<String, String>()
@@ -140,10 +139,12 @@ fun KnockoutPredictionsScreen(repository: PorraRepository, config: SupabaseConfi
 
     PaymentInstructions(settings)
 
-    Panel(title = "Datos del participante") {
+    Panel(title = "Correo del participante") {
         FormGrid {
-            TextField("Nombre completo", "Igual que en fase de grupos", fieldValue = PredictionDrafts.knockoutName) { PredictionDrafts.knockoutName = it }
             TextField("Correo aprobado", "nombre@empresa.com", InputType.Email, fieldValue = PredictionDrafts.knockoutEmail) { PredictionDrafts.knockoutEmail = it }
+        }
+        P(attrs = { classes("notice", "notice-info") }) {
+            Text("Usa el mismo correo con el que enviaste la fase de grupos. Debes estar aprobado para participar.")
         }
     }
 
@@ -172,15 +173,15 @@ fun KnockoutPredictionsScreen(repository: PorraRepository, config: SupabaseConfi
                         messageError = true
                         return@onClick
                     }
-                    if (PredictionDrafts.knockoutName.isBlank() || PredictionDrafts.knockoutEmail.isBlank()) {
-                        message = "Completa nombre y correo"
+                    if (PredictionDrafts.knockoutEmail.isBlank()) {
+                        message = "Completa tu correo"
                         messageError = true
                         return@onClick
                     }
                     submitting = true
                     message = null
                     scope.launch {
-                        val result = collectAndSubmitKnockouts(config, PredictionDrafts.knockoutName, PredictionDrafts.knockoutEmail, repository)
+                        val result = collectAndSubmitKnockouts(config, PredictionDrafts.knockoutEmail, repository)
                         message = result.first
                         messageError = !result.second
                         submitting = false
@@ -272,14 +273,12 @@ private suspend fun collectAndSubmitGroups(
 
 private suspend fun collectAndSubmitKnockouts(
     config: SupabaseConfig,
-    name: String,
     email: String,
     repository: PorraRepository,
 ): Pair<String, Boolean> {
     val matches = repository.knockoutMatches()
 
     val body: dynamic = js("({})")
-    body.participant_name = name
     body.participant_email = email
 
     val kpa = js("([])")

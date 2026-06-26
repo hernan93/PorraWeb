@@ -331,34 +331,91 @@ fun KnockoutPredictionTable(
     onAwayScoreChange: (String, String) -> Unit = { _, _ -> },
     onWinnerChange: (String, String) -> Unit = { _, _ -> },
 ) {
-    matches.groupBy { it.phase }.forEach { (phase, phaseMatches) ->
-        H3(attrs = { classes("phase-title") }) { Text(phaseLabel(phase)) }
-        Table(attrs = { classes("table") }) {
-            Thead {
-                Tr {
-                    Th { Text("Cruce") }
-                    Th { Text("Equipo A") }
-                    Th { Text("Goles A") }
-                    Th { Text("Goles B") }
-                    Th { Text("Equipo B") }
-                    Th { Text("Ganador / clasifica") }
-                }
-            }
-            Tbody {
-                phaseMatches.forEach { match ->
-                    Tr {
-                        Td { Text(match.label) }
-                        Td { Text(match.homeSlot) }
-                        Td { NumberInput("score-home-${match.id}", homeScores[match.id].orEmpty()) { onHomeScoreChange(match.id, it) } }
-                        Td { NumberInput("score-away-${match.id}", awayScores[match.id].orEmpty()) { onAwayScoreChange(match.id, it) } }
-                        Td { Text(match.awaySlot) }
-                        Td { InlineTeamSelect(match.options, "winner-${match.id}", winners[match.id].orEmpty()) { onWinnerChange(match.id, it) } }
+    val matchesById = matches.associateBy { it.id }
+
+    val phaseOrder = listOf("round_32", "round_16", "quarter_final", "semi_final", "third_place", "final")
+    val phasesPresent = phaseOrder.filter { ph -> matches.any { it.phase == ph } }
+
+    Div(attrs = { classes("bracket-scroll") }) {
+        Div(attrs = { classes("bracket-row") }) {
+            phasesPresent.forEach { phase ->
+                val phaseMatches = matches.filter { it.phase == phase }
+                Div(attrs = { classes("bracket-col") }) {
+                    H3(attrs = { classes("phase-title") }) { Text(phaseLabel(phase)) }
+                    phaseMatches.forEach { match ->
+                        KnockoutMatchCard(
+                            match = match,
+                            homeScore = homeScores[match.id].orEmpty(),
+                            awayScore = awayScores[match.id].orEmpty(),
+                            winner = winners[match.id].orEmpty(),
+                            homeFromWinner = match.homeFromMatchId?.let { winners[it] },
+                            awayFromWinner = match.awayFromMatchId?.let { winners[it] },
+                            onHomeScoreChange = onHomeScoreChange,
+                            onAwayScoreChange = onAwayScoreChange,
+                            onWinnerChange = onWinnerChange,
+                        )
                     }
                 }
             }
         }
     }
 }
+
+@Composable
+fun KnockoutMatchCard(
+    match: KnockoutMatch,
+    homeScore: String,
+    awayScore: String,
+    winner: String,
+    homeFromWinner: String?,
+    awayFromWinner: String?,
+    onHomeScoreChange: (String, String) -> Unit,
+    onAwayScoreChange: (String, String) -> Unit,
+    onWinnerChange: (String, String) -> Unit,
+) {
+    val homeTeam = match.options.find { it.id == (if (homeFromWinner != null) homeFromWinner else match.options.firstOrNull()?.id) }
+    val awayTeam = match.options.find { it.id == (if (awayFromWinner != null) awayFromWinner else match.options.getOrNull(1)?.id) }
+
+    val resolvedHome = homeFromWinner?.let { wid -> match.options.find { it.id == wid } }
+    val resolvedAway = awayFromWinner?.let { wid -> match.options.find { it.id == wid } }
+
+    val homeName = resolvedHome?.name ?: match.homeSlot
+    val awayName = resolvedAway?.name ?: match.awaySlot
+    val homeIsPlaceholder = resolvedHome == null
+    val awayIsPlaceholder = resolvedAway == null
+
+    val selectOptions = buildList {
+        if (resolvedHome != null) add(resolvedHome)
+        if (resolvedAway != null) add(resolvedAway)
+        if (resolvedHome == null && resolvedAway == null) addAll(match.options)
+    }
+
+    Div(attrs = { classes("knockout-card") }) {
+        Div(attrs = { classes("knockout-card-header") }) {
+            Text(match.label)
+        }
+        Div(attrs = { classes("knockout-team-row") }) {
+            if (resolvedHome?.fifaCode != null) {
+                Img(src = flagSrc(resolvedHome.fifaCode!!), attrs = { classes("team-flag-sm") })
+            }
+            Span(attrs = { if (homeIsPlaceholder) classes("team-placeholder") else classes("team-name-k") }) { Text(homeName) }
+            NumberInput("score-home-${match.id}", homeScore) { onHomeScoreChange(match.id, it) }
+        }
+        Div(attrs = { classes("knockout-team-row") }) {
+            if (resolvedAway?.fifaCode != null) {
+                Img(src = flagSrc(resolvedAway.fifaCode!!), attrs = { classes("team-flag-sm") })
+            }
+            Span(attrs = { if (awayIsPlaceholder) classes("team-placeholder") else classes("team-name-k") }) { Text(awayName) }
+            NumberInput("score-away-${match.id}", awayScore) { onAwayScoreChange(match.id, it) }
+        }
+        Div(attrs = { classes("knockout-winner-row") }) {
+            Span { Text("Ganador:") }
+            InlineTeamSelect(selectOptions, "winner-${match.id}", winner) { onWinnerChange(match.id, it) }
+        }
+    }
+}
+
+
 
 @Composable
 fun InlineTeamSelect(teams: List<Team>, elementId: String = "", value: String = "", onValueChange: (String) -> Unit = {}) {

@@ -13,6 +13,7 @@ data class ScoringRule(
 data class Team(
     val id: String,
     val name: String,
+    val fifaCode: String? = null,
 )
 
 data class TournamentGroup(
@@ -37,6 +38,9 @@ data class KnockoutMatch(
     val homeSlot: String,
     val awaySlot: String,
     val options: List<Team>,
+    val matchNumber: Int? = null,
+    val homeFromMatchId: String? = null,
+    val awayFromMatchId: String? = null,
 )
 
 data class RankingEntry(

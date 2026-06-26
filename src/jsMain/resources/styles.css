@@ -692,3 +692,102 @@ body {
         gap: 14px;
     }
 }
+
+.bracket-scroll {
+    overflow-x: auto;
+    padding-bottom: 12px;
+}
+
+.bracket-row {
+    display: flex;
+    gap: 24px;
+    min-width: max-content;
+}
+
+.bracket-col {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 220px;
+}
+
+.knockout-card {
+    border: 1px solid #e7edf5;
+    border-radius: 12px;
+    background: #fff;
+    padding: 10px 12px;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.knockout-card-header {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6b7280;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.knockout-team-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 0;
+}
+
+.team-name-k {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f172a;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.team-placeholder {
+    font-size: 13px;
+    color: #9ca3af;
+    font-style: italic;
+    flex: 1;
+}
+
+.team-flag-sm {
+    width: 20px;
+    height: 14px;
+    border-radius: 3px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.knockout-winner-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid #f1f5f9;
+    font-size: 12px;
+    color: #526173;
+}
+
+.notice-info {
+    font-size: 13px;
+    color: #475569;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+    padding: 10px 14px;
+}
+
+@media (max-width: 720px) {
+    .bracket-row {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .bracket-col {
+        min-width: 100%;
+    }
+}

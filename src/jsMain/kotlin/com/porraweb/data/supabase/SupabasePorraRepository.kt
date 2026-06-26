@@ -90,6 +90,7 @@ class SupabasePorraRepository(private val config: SupabaseConfig) : PorraReposit
                 Team(
                     id = text(row.id) ?: return@mapNotNull null,
                     name = TeamNamesEs.es(fifaCode),
+                    fifaCode = fifaCode,
                 )
             }
         val teamsById = teams.associateBy { it.id }
@@ -150,7 +151,10 @@ class SupabasePorraRepository(private val config: SupabaseConfig) : PorraReposit
             groupMatches = groupMatches,
             knockoutMatches = matches
                 .filter { it.phase != "group" }
-                .map { it.toKnockoutMatch(teamsById, teams) },
+                .let { kMatches ->
+                    val matchNumToId = kMatches.filter { it.matchNumber != null }.associate { it.matchNumber!! to it.id }
+                    kMatches.map { it.toKnockoutMatch(teamsById, teams, matchNumToId) }
+                },
             dashboardSummary = dashboardDeferred.await(),
             ranking = rankingDeferred.await(),
             latestResults = resultsDeferred.await(),
@@ -317,17 +321,41 @@ private data class DbMatch(
         )
     }
 
-    fun toKnockoutMatch(teamsById: Map<String, Team>, teams: List<Team>): KnockoutMatch {
+    fun toKnockoutMatch(teamsById: Map<String, Team>, teams: List<Team>, matchNumToId: Map<Int, String>): KnockoutMatch {
         val home = teamFrom(homeTeamId, homeSlot, teamsById, "home")
         val away = teamFrom(awayTeamId, awaySlot, teamsById, "away")
+        val mn = matchNumber
+        val (homeFrom, awayFrom) = bracketSources(mn, matchNumToId)
         return KnockoutMatch(
             id = id,
             phase = phase,
-            label = "Partido ${matchNumber ?: ""}",
+            label = "Partido ${mn ?: ""}",
             homeSlot = home.name,
             awaySlot = away.name,
             options = if (homeTeamId != null && awayTeamId != null) listOf(home, away) else teams,
+            matchNumber = mn,
+            homeFromMatchId = homeFrom,
+            awayFromMatchId = awayFrom,
         )
+    }
+
+    private fun bracketSources(matchNum: Int?, matchNumToId: Map<Int, String>): Pair<String?, String?> {
+        if (matchNum == null) return null to null
+        return when (matchNum) {
+            in 89..96 -> {
+                val base = (matchNum - 89) * 2 + 73
+                matchNumToId[base] to matchNumToId[base + 1]
+            }
+            in 97..100 -> {
+                val base = (matchNum - 97) * 2 + 89
+                matchNumToId[base] to matchNumToId[base + 1]
+            }
+            101 -> matchNumToId[97] to matchNumToId[98]
+            102 -> matchNumToId[99] to matchNumToId[100]
+            103 -> matchNumToId[101] to matchNumToId[102]
+            104 -> matchNumToId[101] to matchNumToId[102]
+            else -> null to null
+        }
     }
 }
 
