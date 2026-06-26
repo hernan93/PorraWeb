@@ -334,14 +334,33 @@ fun KnockoutPredictionTable(
     val matchesById = matches.associateBy { it.id }
 
     val phaseOrder = listOf("round_32", "round_16", "quarter_final", "semi_final", "third_place", "final")
-    val phasesPresent = phaseOrder.filter { ph -> matches.any { it.phase == ph } }
+    val phaseLabels = mapOf(
+        "round_32" to "Ronda de 32 (16 partidos)",
+        "round_16" to "Octavos de final (8 partidos)",
+        "quarter_final" to "Cuartos de final (4 partidos)",
+        "semi_final" to "Semifinales (2 partidos)",
+        "third_place" to "Tercer puesto",
+        "final" to "Final",
+    )
 
-    Div(attrs = { classes("bracket-scroll") }) {
-        Div(attrs = { classes("bracket-row") }) {
-            phasesPresent.forEach { phase ->
-                val phaseMatches = matches.filter { it.phase == phase }
-                Div(attrs = { classes("bracket-col") }) {
-                    H3(attrs = { classes("phase-title") }) { Text(phaseLabel(phase)) }
+    phaseOrder.forEach { phase ->
+        val phaseMatches = matches.filter { it.phase == phase }
+        if (phaseMatches.isEmpty()) return@forEach
+
+        val filledCount = phaseMatches.count { winners[it.id]?.isNotEmpty() == true }
+        val total = phaseMatches.size
+        val isExpanded = remember { mutableStateOf(phase == "round_32") }
+
+        Div(attrs = { classes("round-section") }) {
+            Div(attrs = {
+                classes("round-header")
+                onClick { isExpanded.value = !isExpanded.value }
+            }) {
+                Span(attrs = { classes("round-title") }) { Text(phaseLabels[phase] ?: phase) }
+                Span(attrs = { classes("round-badge") }) { Text("$filledCount/$total") }
+            }
+            if (isExpanded.value) {
+                Div(attrs = { classes("round-matches") }) {
                     phaseMatches.forEach { match ->
                         KnockoutMatchCard(
                             match = match,
@@ -373,43 +392,59 @@ fun KnockoutMatchCard(
     onAwayScoreChange: (String, String) -> Unit,
     onWinnerChange: (String, String) -> Unit,
 ) {
-    val homeTeam = match.options.find { it.id == (if (homeFromWinner != null) homeFromWinner else match.options.firstOrNull()?.id) }
-    val awayTeam = match.options.find { it.id == (if (awayFromWinner != null) awayFromWinner else match.options.getOrNull(1)?.id) }
+    val fifaDefined = match.options.size <= 2 && match.options.isNotEmpty()
 
-    val resolvedHome = homeFromWinner?.let { wid -> match.options.find { it.id == wid } }
-    val resolvedAway = awayFromWinner?.let { wid -> match.options.find { it.id == wid } }
+    val resolvedHome: Team? = when {
+        homeFromWinner != null -> match.options.find { it.id == homeFromWinner }
+        fifaDefined -> match.options.firstOrNull()
+        else -> null
+    }
+    val resolvedAway: Team? = when {
+        awayFromWinner != null -> match.options.find { it.id == awayFromWinner }
+        fifaDefined -> match.options.getOrNull(1)
+        else -> null
+    }
 
     val homeName = resolvedHome?.name ?: match.homeSlot
     val awayName = resolvedAway?.name ?: match.awaySlot
-    val homeIsPlaceholder = resolvedHome == null
-    val awayIsPlaceholder = resolvedAway == null
+    val homePlaceholder = resolvedHome == null
+    val awayPlaceholder = resolvedAway == null
 
-    val selectOptions = buildList {
-        if (resolvedHome != null) add(resolvedHome)
-        if (resolvedAway != null) add(resolvedAway)
-        if (resolvedHome == null && resolvedAway == null) addAll(match.options)
+    val selectOptions = when {
+        fifaDefined && match.homeFromMatchId == null -> match.options
+        resolvedHome != null && resolvedAway != null -> listOf(resolvedHome, resolvedAway)
+        resolvedHome != null -> listOf(resolvedHome)
+        resolvedAway != null -> listOf(resolvedAway)
+        else -> match.options
     }
 
-    Div(attrs = { classes("knockout-card") }) {
-        Div(attrs = { classes("knockout-card-header") }) {
-            Text(match.label)
-        }
-        Div(attrs = { classes("knockout-team-row") }) {
-            if (resolvedHome?.fifaCode != null) {
-                Img(src = flagSrc(resolvedHome.fifaCode!!), attrs = { classes("team-flag-sm") })
+    Div(attrs = { classes("ko-card") }) {
+        Span(attrs = { classes("ko-card-label") }) { Text(match.label) }
+        Div(attrs = { classes("ko-teams") }) {
+            Div(attrs = { classes("ko-team") }) {
+                if (resolvedHome?.fifaCode != null) {
+                    Img(src = flagSrc(resolvedHome.fifaCode!!), attrs = { classes("team-flag-sm") })
+                }
+                Span(attrs = {
+                    if (homePlaceholder) classes("ko-team-ph")
+                    else classes("ko-team-name")
+                }) { Text(homeName) }
+                NumberInput("score-home-${match.id}", homeScore) { onHomeScoreChange(match.id, it) }
             }
-            Span(attrs = { if (homeIsPlaceholder) classes("team-placeholder") else classes("team-name-k") }) { Text(homeName) }
-            NumberInput("score-home-${match.id}", homeScore) { onHomeScoreChange(match.id, it) }
-        }
-        Div(attrs = { classes("knockout-team-row") }) {
-            if (resolvedAway?.fifaCode != null) {
-                Img(src = flagSrc(resolvedAway.fifaCode!!), attrs = { classes("team-flag-sm") })
+            Div(attrs = { classes("ko-vs") }) { Text("vs") }
+            Div(attrs = { classes("ko-team") }) {
+                if (resolvedAway?.fifaCode != null) {
+                    Img(src = flagSrc(resolvedAway.fifaCode!!), attrs = { classes("team-flag-sm") })
+                }
+                Span(attrs = {
+                    if (awayPlaceholder) classes("ko-team-ph")
+                    else classes("ko-team-name")
+                }) { Text(awayName) }
+                NumberInput("score-away-${match.id}", awayScore) { onAwayScoreChange(match.id, it) }
             }
-            Span(attrs = { if (awayIsPlaceholder) classes("team-placeholder") else classes("team-name-k") }) { Text(awayName) }
-            NumberInput("score-away-${match.id}", awayScore) { onAwayScoreChange(match.id, it) }
         }
-        Div(attrs = { classes("knockout-winner-row") }) {
-            Span { Text("Ganador:") }
+        Div(attrs = { classes("ko-winner") }) {
+            Text("Ganador: ")
             InlineTeamSelect(selectOptions, "winner-${match.id}", winner) { onWinnerChange(match.id, it) }
         }
     }
