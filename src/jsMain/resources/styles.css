@@ -824,6 +824,264 @@ body {
     margin-bottom: 12px;
 }
 
+.bracket-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 14px;
+    margin: 0 -8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.bracket-scroll::-webkit-scrollbar {
+    height: 8px;
+}
+
+.bracket-scroll::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+}
+
+.bracket-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.bracket-canvas {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0;
+    min-width: max-content;
+    padding: 8px 8px 16px;
+    min-height: 1700px;
+}
+
+.bracket-round {
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+}
+
+.bracket-round-grid {
+    display: grid;
+    grid-template-rows: repeat(16, 1fr);
+    flex: 1;
+}
+
+.bracket-round-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 10px 8px 14px;
+}
+
+.bracket-round-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: #0f172a;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.bracket-round-count {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.bracket-connector {
+    position: relative;
+    align-self: stretch;
+}
+
+.bracket-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 8px 10px;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+    max-width: 196px;
+    width: 100%;
+}
+
+.bracket-card-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 6px;
+    text-align: center;
+}
+
+.bracket-teams {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.bracket-team {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 28px;
+}
+
+.bracket-flag {
+    width: 20px;
+    height: 14px;
+    border-radius: 2px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.bracket-team-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: #0f172a;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bracket-team-ph {
+    font-size: 11px;
+    color: #94a3b8;
+    font-style: italic;
+    flex: 1;
+}
+
+.bracket-winner {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-top: 8px;
+    margin-top: 6px;
+    border-top: 1px solid #f1f5f9;
+    font-size: 11px;
+    color: #64748b;
+}
+
+.bracket-winner .compact-select {
+    min-width: 0;
+    flex: 1;
+    min-height: 32px;
+    font-size: 11px;
+    padding: 3px 6px;
+}
+
+.bracket-winner-label {
+    flex-shrink: 0;
+    font-weight: 700;
+}
+
+.bracket-winner-hint {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+    font-size: 9px;
+    color: #94a3b8;
+    font-style: italic;
+    text-align: center;
+}
+
+.ko-winner-hint {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+    font-size: 10px;
+    color: #94a3b8;
+    font-style: italic;
+}
+
+.bracket-finals .bracket-card {
+    max-width: 196px;
+}
+
+.bracket-panel {
+    margin-top: 16px;
+    padding: 22px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.07);
+    overflow: visible;
+    max-width: none;
+}
+
+.bracket-panel h2 {
+    margin-top: 0;
+    color: #07142d;
+}
+
+@media (max-width: 1024px) {
+    .bracket-canvas {
+        min-height: 1480px;
+    }
+
+    .bracket-card {
+        max-width: 174px;
+        padding: 7px 8px;
+    }
+
+    .bracket-card-label {
+        font-size: 9px;
+        margin-bottom: 4px;
+    }
+
+    .bracket-round-title {
+        font-size: 12px;
+    }
+
+    .bracket-round-count {
+        font-size: 10px;
+    }
+
+    .bracket-flag {
+        width: 18px;
+        height: 12px;
+    }
+
+    .bracket-team {
+        min-height: 24px;
+        gap: 4px;
+    }
+
+    .bracket-team-name {
+        font-size: 11px;
+    }
+
+    .bracket-team-ph {
+        font-size: 10px;
+    }
+
+    .bracket-winner {
+        font-size: 10px;
+        padding-top: 6px;
+        margin-top: 4px;
+        gap: 4px;
+    }
+
+    .bracket-winner .compact-select {
+        min-height: 28px;
+        font-size: 10px;
+        padding: 2px 4px;
+    }
+
+    .bracket-panel {
+        padding: 18px 14px;
+    }
+}
+
 @media (max-width: 720px) {
     .round-matches {
         grid-template-columns: 1fr;
@@ -831,5 +1089,90 @@ body {
 
     .round-header {
         padding: 14px 16px;
+    }
+
+    .bracket-scroll {
+        margin: 0 -18px;
+        padding-left: 4px;
+        padding-right: 4px;
+    }
+
+    .bracket-canvas {
+        padding: 4px 4px 12px;
+        min-height: 1100px;
+    }
+
+    .bracket-card {
+        max-width: 148px;
+        padding: 6px 7px;
+    }
+
+    .bracket-card-label {
+        font-size: 8px;
+        margin-bottom: 3px;
+        letter-spacing: 0.02em;
+    }
+
+    .bracket-round-label {
+        padding: 8px 4px 10px;
+    }
+
+    .bracket-round-title {
+        font-size: 11px;
+    }
+
+    .bracket-round-count {
+        font-size: 9px;
+    }
+
+    .bracket-teams {
+        gap: 2px;
+    }
+
+    .bracket-flag {
+        width: 16px;
+        height: 11px;
+    }
+
+    .bracket-team {
+        min-height: 22px;
+        gap: 3px;
+    }
+
+    .bracket-team-name {
+        font-size: 10px;
+    }
+
+    .bracket-team-ph {
+        font-size: 9px;
+    }
+
+    .bracket-winner {
+        font-size: 9px;
+        padding-top: 5px;
+        margin-top: 3px;
+        gap: 3px;
+    }
+
+    .bracket-winner .compact-select {
+        min-height: 26px;
+        font-size: 9px;
+        padding: 2px 3px;
+    }
+
+    .bracket-panel {
+        padding: 14px 10px;
+        border-radius: 16px;
+    }
+
+    .bracket-panel h2 {
+        font-size: 17px;
+    }
+
+    .score-input {
+        max-width: 56px;
+        min-height: 32px;
+        font-size: 12px;
+        padding: 4px 6px;
     }
 }

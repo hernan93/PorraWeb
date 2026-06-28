@@ -41,6 +41,10 @@ data class KnockoutMatch(
     val matchNumber: Int? = null,
     val homeFromMatchId: String? = null,
     val awayFromMatchId: String? = null,
+    val homeFromResult: String? = null,
+    val awayFromResult: String? = null,
+    val homeTeam: Team? = null,
+    val awayTeam: Team? = null,
 )
 
 data class RankingEntry(

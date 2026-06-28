@@ -40,6 +40,7 @@ import org.jetbrains.compose.web.dom.Text
 import org.jetbrains.compose.web.dom.Th
 import org.jetbrains.compose.web.dom.Thead
 import org.jetbrains.compose.web.dom.Tr
+import org.jetbrains.compose.web.css.style
 import org.jetbrains.compose.web.dom.Ul
 
 @Composable
@@ -321,6 +322,35 @@ fun SubmitPreviewButton(label: String) {
     }
 }
 
+private const val CARD_W = 208
+private const val CONN_W = 34
+
+private val INTERNAL_SLOT_REGEX = Regex("^(W\\d+|RU\\d+).*$")
+
+private fun placeholderSlot(slot: String?): String {
+    if (slot.isNullOrBlank()) return "Por definir"
+    return if (slot.trim().matches(INTERNAL_SLOT_REGEX)) "Por definir" else slot
+}
+
+private fun canSelectWinner(match: KnockoutMatch, winners: Map<String, String>, losers: Map<String, String>): Boolean {
+    val homeSource = match.homeFromMatchId
+    val awaySource = match.awayFromMatchId
+    if (homeSource == null && awaySource == null) return true
+    if (homeSource == null || awaySource == null) return false
+
+    val homeSourceReady = winners[homeSource]?.isNotEmpty() == true
+    val awaySourceReady = winners[awaySource]?.isNotEmpty() == true
+    if (!homeSourceReady || !awaySourceReady) return false
+
+    val loserBased = match.homeFromResult == "loser" || match.awayFromResult == "loser"
+    if (loserBased) {
+        val homeLoserReady = losers[homeSource] != null
+        val awayLoserReady = losers[awaySource] != null
+        return homeLoserReady && awayLoserReady
+    }
+    return true
+}
+
 @Composable
 fun KnockoutPredictionTable(
     matches: List<KnockoutMatch>,
@@ -331,8 +361,446 @@ fun KnockoutPredictionTable(
     onAwayScoreChange: (String, String) -> Unit = { _, _ -> },
     onWinnerChange: (String, String) -> Unit = { _, _ -> },
 ) {
-    val matchesById = matches.associateBy { it.id }
+    val losers = remember(matches, winners) { computeKnockoutLosers(matches, winners) }
+    val sortedByBracket = remember(matches) { sortMatchesByBracketTree(matches) }
+    val matchesByPhase = sortedByBracket.groupBy { it.phase }
+    val r32 = matchesByPhase["round_32"] ?: emptyList()
+    val r16 = matchesByPhase["round_16"] ?: emptyList()
+    val qf = matchesByPhase["quarter_final"] ?: emptyList()
+    val sf = matchesByPhase["semi_final"] ?: emptyList()
+    val finalMatch = matchesByPhase["final"]?.firstOrNull()
+    val thirdMatch = matchesByPhase["third_place"]?.firstOrNull()
 
+    if (r32.isEmpty()) {
+        legacyKnockoutTable(matches, homeScores, awayScores, winners, losers, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
+        return
+    }
+
+    Div(attrs = { classes("bracket-scroll") }) {
+        Div(attrs = { classes("bracket-canvas") }) {
+            bracketRound("Ronda de 32", 1, r32, homeScores, awayScores, winners, losers, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
+            bracketConnector(1, 2, 8)
+            bracketRound("Octavos de final", 2, r16, homeScores, awayScores, winners, losers, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
+            bracketConnector(2, 4, 4)
+            bracketRound("Cuartos de final", 4, qf, homeScores, awayScores, winners, losers, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
+            bracketConnector(4, 8, 2)
+            bracketRound("Semifinales", 8, sf, homeScores, awayScores, winners, losers, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
+
+            Div(attrs = {
+                classes("bracket-connector")
+                style {
+                    property("position", "relative")
+                    property("width", "${CONN_W}px")
+                    property("flex-shrink", "0")
+                }
+            }) {
+                finalsConnectorLines()
+            }
+
+            Div(attrs = {
+                classes("bracket-round", "bracket-finals")
+                style {
+                    property("width", "${CARD_W}px")
+                    property("flex-shrink", "0")
+                    property("display", "flex")
+                    property("flex-direction", "column")
+                }
+            }) {
+                Div(attrs = { classes("bracket-round-label") }) {
+                    Span(attrs = { classes("bracket-round-title") }) { Text("Finales") }
+                }
+                Div(attrs = {
+                    classes("bracket-round-grid")
+                    style {
+                        property("display", "grid")
+                        property("grid-template-rows", "1fr 1fr")
+                    }
+                }) {
+                    Div(attrs = {
+                        style {
+                            property("grid-row", "1 / 2")
+                            property("display", "flex")
+                            property("flex-direction", "column")
+                            property("align-items", "center")
+                            property("justify-content", "center")
+                            property("gap", "4px")
+                        }
+                    }) {
+                        Span(attrs = { style { property("font-size", "10px"); property("font-weight", "700"); property("color", "#64748b"); property("text-transform", "uppercase") } }) { Text("1er y 2do puesto") }
+                        finalMatch?.let { m ->
+                            bracketMatchCard(m, homeScores, awayScores, winners, losers, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
+                        }
+                    }
+                    Div(attrs = {
+                        style {
+                            property("grid-row", "2 / 3")
+                            property("display", "flex")
+                            property("flex-direction", "column")
+                            property("align-items", "center")
+                            property("justify-content", "center")
+                            property("gap", "4px")
+                        }
+                    }) {
+                        Span(attrs = { style { property("font-size", "10px"); property("font-weight", "700"); property("color", "#64748b"); property("text-transform", "uppercase") } }) { Text("3er puesto") }
+                        thirdMatch?.let { m ->
+                            bracketMatchCard(m, homeScores, awayScores, winners, losers, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun bracketRound(
+    label: String,
+    rowSpan: Int,
+    matches: List<KnockoutMatch>,
+    homeScores: Map<String, String>,
+    awayScores: Map<String, String>,
+    winners: Map<String, String>,
+    losers: Map<String, String>,
+    onHomeScoreChange: (String, String) -> Unit,
+    onAwayScoreChange: (String, String) -> Unit,
+    onWinnerChange: (String, String) -> Unit,
+) {
+    val filled = matches.count { winners[it.id]?.isNotEmpty() == true }
+    val total = matches.size
+
+    Div(attrs = {
+        classes("bracket-round")
+        style {
+            property("width", "${CARD_W}px")
+            property("flex-shrink", "0")
+            property("display", "flex")
+            property("flex-direction", "column")
+        }
+    }) {
+        Div(attrs = { classes("bracket-round-label") }) {
+            Span(attrs = { classes("bracket-round-title") }) { Text(label) }
+            Span(attrs = { classes("bracket-round-count") }) { Text("$filled/$total") }
+        }
+        Div(attrs = {
+            classes("bracket-round-grid")
+            style {
+                property("display", "grid")
+                property("grid-template-rows", "repeat(16, 1fr)")
+            }
+        }) {
+            matches.forEachIndexed { index, match ->
+                val rowStart = index * rowSpan + 1
+                val rowEnd = rowStart + rowSpan
+                Div(attrs = {
+                    style {
+                        property("grid-row", "$rowStart / $rowEnd")
+                        property("display", "flex")
+                        property("align-items", "center")
+                        property("justify-content", "center")
+                    }
+                }) {
+                    bracketMatchCard(match, homeScores, awayScores, winners, losers, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun bracketConnector(sourceSpan: Int, targetSpan: Int, numTargets: Int) {
+    Div(attrs = {
+        classes("bracket-connector")
+        style {
+            property("position", "relative")
+            property("width", "${CONN_W}px")
+            property("flex-shrink", "0")
+        }
+    }) {
+        val total = 16.0
+        for (i in 0 until numTargets) {
+            val srcCenter0 = ((i * 2) * sourceSpan + sourceSpan / 2.0) / total
+            val srcCenter1 = ((i * 2 + 1) * sourceSpan + sourceSpan / 2.0) / total
+            val tgtCenter = (i * targetSpan + targetSpan / 2.0) / total
+            val connHeight = srcCenter1 - srcCenter0
+            val armTop = if (connHeight > 0) ((tgtCenter - srcCenter0) / connHeight) * 100.0 else 50.0
+            val halfW = "${CONN_W / 2}px"
+
+            Div(attrs = {
+                style {
+                    property("position", "absolute")
+                    property("top", "${srcCenter0 * 100}%")
+                    property("height", "${connHeight * 100}%")
+                    property("left", "0")
+                    property("width", halfW)
+                    property("border-right", "2px solid #cbd5e1")
+                }
+            })
+            Div(attrs = {
+                style {
+                    property("position", "absolute")
+                    property("top", "${srcCenter0 * 100}%")
+                    property("left", "0")
+                    property("width", halfW)
+                    property("height", "2px")
+                    property("background", "#cbd5e1")
+                }
+            })
+            Div(attrs = {
+                style {
+                    property("position", "absolute")
+                    property("top", "${srcCenter1 * 100}%")
+                    property("left", "0")
+                    property("width", halfW)
+                    property("height", "2px")
+                    property("background", "#cbd5e1")
+                }
+            })
+            Div(attrs = {
+                style {
+                    property("position", "absolute")
+                    property("top", "${tgtCenter * 100}%")
+                    property("left", halfW)
+                    property("right", "0")
+                    property("height", "2px")
+                    property("background", "#cbd5e1")
+                }
+            })
+        }
+    }
+}
+
+private fun finalsConnectorLines(): @Composable () -> Unit = {
+    val hw = "${CONN_W / 2}px"
+    val total = 16.0
+    val sf0Center = 4.5 / total * 100
+    val sf1Center = 12.5 / total * 100
+    val finalCenter = 4.5 / total * 100
+    val thirdCenter = 12.5 / total * 100
+
+    Div(attrs = {
+        style {
+            property("position", "absolute")
+            property("top", "${sf0Center}%")
+            property("bottom", "${100.0 - sf1Center}%")
+            property("left", "0")
+            property("width", hw)
+            property("border-right", "2px solid #cbd5e1")
+        }
+    })
+    Div(attrs = {
+        style {
+            property("position", "absolute")
+            property("top", "${sf0Center}%")
+            property("left", "0")
+            property("width", hw)
+            property("height", "2px")
+            property("background", "#cbd5e1")
+        }
+    })
+    Div(attrs = {
+        style {
+            property("position", "absolute")
+            property("top", "${sf1Center}%")
+            property("left", "0")
+            property("width", hw)
+            property("height", "2px")
+            property("background", "#cbd5e1")
+        }
+    })
+    Div(attrs = {
+        style {
+            property("position", "absolute")
+            property("top", "${finalCenter}%")
+            property("left", hw)
+            property("right", "0")
+            property("height", "2px")
+            property("background", "#cbd5e1")
+        }
+    })
+    Div(attrs = {
+        style {
+            property("position", "absolute")
+            property("top", "${thirdCenter}%")
+            property("left", hw)
+            property("right", "0")
+            property("height", "2px")
+            property("background", "#cbd5e1")
+        }
+    })
+}
+
+private fun computeKnockoutLosers(matches: List<KnockoutMatch>, winners: Map<String, String>): Map<String, String> {
+    val losers = mutableMapOf<String, String>()
+    val resolvedHome = mutableMapOf<String, Team?>()
+    val resolvedAway = mutableMapOf<String, Team?>()
+
+    for (match in matches) {
+        val hfw = match.homeFromMatchId?.let { winners[it] }
+        val afw = match.awayFromMatchId?.let { winners[it] }
+        resolvedHome[match.id] = when {
+            hfw != null -> match.options.find { it.id == hfw }
+            match.homeTeam != null -> match.homeTeam
+            else -> null
+        }
+        resolvedAway[match.id] = when {
+            afw != null -> match.options.find { it.id == afw }
+            match.awayTeam != null -> match.awayTeam
+            else -> null
+        }
+    }
+
+    for (match in matches) {
+        val winner = winners[match.id] ?: continue
+        val home = resolvedHome[match.id] ?: continue
+        val away = resolvedAway[match.id] ?: continue
+        val loserId = when (winner) {
+            home.id -> away.id
+            away.id -> home.id
+            else -> null
+        }
+        if (loserId != null) losers[match.id] = loserId
+    }
+
+    return losers
+}
+
+private fun sortMatchesByBracketTree(matches: List<KnockoutMatch>): List<KnockoutMatch> {
+    val matchesById = matches.associateBy { it.id }
+    val finalMatch = matches.find { it.phase == "final" }
+        ?: return matches.sortedBy { it.matchNumber ?: 0 }
+
+    val r32Order = mutableListOf<String>()
+    fun visit(matchId: String?) {
+        if (matchId == null) return
+        val m = matchesById[matchId] ?: return
+        if (m.phase == "round_32") {
+            r32Order.add(matchId)
+            return
+        }
+        visit(m.homeFromMatchId)
+        visit(m.awayFromMatchId)
+    }
+    visit(finalMatch.id)
+
+    val position = mutableMapOf<String, Double>()
+    fun computePos(matchId: String?, visited: MutableSet<String> = mutableSetOf()): Double {
+        if (matchId == null) return 0.0
+        if (matchId in position) return position[matchId]!!
+        val m = matchesById[matchId] ?: return 0.0
+        if (m.phase == "round_32") {
+            val idx = r32Order.indexOf(matchId).toDouble()
+            position[matchId] = idx
+            return idx
+        }
+        val left = computePos(m.homeFromMatchId, visited)
+        val right = computePos(m.awayFromMatchId, visited)
+        val avg = (left + right) / 2.0
+        position[matchId] = avg
+        return avg
+    }
+    for (match in matches) {
+        computePos(match.id)
+    }
+
+    return matches.sortedBy { position[it.id] ?: (it.matchNumber?.toDouble() ?: 999.0) }
+}
+
+@Composable
+private fun bracketMatchCard(
+    match: KnockoutMatch,
+    homeScores: Map<String, String>,
+    awayScores: Map<String, String>,
+    winners: Map<String, String>,
+    losers: Map<String, String>,
+    onHomeScoreChange: (String, String) -> Unit,
+    onAwayScoreChange: (String, String) -> Unit,
+    onWinnerChange: (String, String) -> Unit,
+) {
+    val homeFromWinner = match.homeFromMatchId?.let { winners[it] }
+    val awayFromWinner = match.awayFromMatchId?.let { winners[it] }
+    val homeFromLoserId = if (match.homeFromResult == "loser") match.homeFromMatchId?.let { losers[it] } else null
+    val awayFromLoserId = if (match.awayFromResult == "loser") match.awayFromMatchId?.let { losers[it] } else null
+
+    val resolvedHome: Team? = when {
+        match.homeFromResult == "loser" -> homeFromLoserId?.let { match.options.find { o -> o.id == it } }
+        homeFromWinner != null -> match.options.find { it.id == homeFromWinner }
+        match.homeTeam != null -> match.homeTeam
+        else -> null
+    }
+    val resolvedAway: Team? = when {
+        match.awayFromResult == "loser" -> awayFromLoserId?.let { match.options.find { o -> o.id == it } }
+        awayFromWinner != null -> match.options.find { it.id == awayFromWinner }
+        match.awayTeam != null -> match.awayTeam
+        else -> null
+    }
+
+    val homeName = resolvedHome?.name ?: placeholderSlot(match.homeSlot)
+    val awayName = resolvedAway?.name ?: placeholderSlot(match.awaySlot)
+    val homePlaceholder = resolvedHome == null
+    val awayPlaceholder = resolvedAway == null
+
+    val selectOptions = when {
+        match.homeTeam != null && match.awayTeam != null && match.homeFromMatchId == null ->
+            listOf(match.homeTeam!!, match.awayTeam!!)
+        resolvedHome != null && resolvedAway != null -> listOf(resolvedHome, resolvedAway)
+        else -> match.options
+    }
+
+    val canSelect = canSelectWinner(match, winners, losers)
+
+    Div(attrs = { classes("bracket-card") }) {
+        Span(attrs = { classes("bracket-card-label") }) { Text(match.label) }
+
+        Div(attrs = { classes("bracket-teams") }) {
+            Div(attrs = { classes("bracket-team") }) {
+                if (resolvedHome?.fifaCode != null) {
+                    Img(src = flagSrc(resolvedHome.fifaCode!!), attrs = { classes("bracket-flag") })
+                }
+                Span(attrs = {
+                    if (homePlaceholder) classes("bracket-team-ph") else classes("bracket-team-name")
+                }) { Text(homeName) }
+                NumberInput("score-home-${match.id}", homeScores[match.id].orEmpty()) { onHomeScoreChange(match.id, it) }
+            }
+            Div(attrs = { classes("bracket-team") }) {
+                if (resolvedAway?.fifaCode != null) {
+                    Img(src = flagSrc(resolvedAway.fifaCode!!), attrs = { classes("bracket-flag") })
+                }
+                Span(attrs = {
+                    if (awayPlaceholder) classes("bracket-team-ph") else classes("bracket-team-name")
+                }) { Text(awayName) }
+                NumberInput("score-away-${match.id}", awayScores[match.id].orEmpty()) { onAwayScoreChange(match.id, it) }
+            }
+        }
+
+        Div(attrs = { classes("bracket-winner") }) {
+            Span(attrs = { classes("bracket-winner-label") }) { Text("Ganador") }
+            InlineTeamSelect(
+                teams = selectOptions,
+                elementId = "winner-${match.id}",
+                value = winners[match.id].orEmpty(),
+                onValueChange = { onWinnerChange(match.id, it) },
+                disabled = !canSelect,
+            )
+            if (!canSelect) {
+                Span(attrs = { classes("bracket-winner-hint") }) {
+                    Text("Llena las rondas anteriores")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun legacyKnockoutTable(
+    matches: List<KnockoutMatch>,
+    homeScores: Map<String, String>,
+    awayScores: Map<String, String>,
+    winners: Map<String, String>,
+    losers: Map<String, String>,
+    onHomeScoreChange: (String, String) -> Unit,
+    onAwayScoreChange: (String, String) -> Unit,
+    onWinnerChange: (String, String) -> Unit,
+) {
     val phaseOrder = listOf("round_32", "round_16", "quarter_final", "semi_final", "third_place", "final")
     val phaseLabels = mapOf(
         "round_32" to "Ronda de 32 (16 partidos)",
@@ -369,6 +837,10 @@ fun KnockoutPredictionTable(
                             winner = winners[match.id].orEmpty(),
                             homeFromWinner = match.homeFromMatchId?.let { winners[it] },
                             awayFromWinner = match.awayFromMatchId?.let { winners[it] },
+                            homeFromLoser = if (match.homeFromResult == "loser") match.homeFromMatchId?.let { losers[it] } else null,
+                            awayFromLoser = if (match.awayFromResult == "loser") match.awayFromMatchId?.let { losers[it] } else null,
+                            winners = winners,
+                            losers = losers,
                             onHomeScoreChange = onHomeScoreChange,
                             onAwayScoreChange = onAwayScoreChange,
                             onWinnerChange = onWinnerChange,
@@ -381,42 +853,47 @@ fun KnockoutPredictionTable(
 }
 
 @Composable
-fun KnockoutMatchCard(
+    fun KnockoutMatchCard(
     match: KnockoutMatch,
     homeScore: String,
     awayScore: String,
     winner: String,
     homeFromWinner: String?,
     awayFromWinner: String?,
+    homeFromLoser: String? = null,
+    awayFromLoser: String? = null,
+    winners: Map<String, String> = emptyMap(),
+    losers: Map<String, String> = emptyMap(),
     onHomeScoreChange: (String, String) -> Unit,
     onAwayScoreChange: (String, String) -> Unit,
     onWinnerChange: (String, String) -> Unit,
 ) {
-    val fifaDefined = match.options.size <= 2 && match.options.isNotEmpty()
-
     val resolvedHome: Team? = when {
+        match.homeFromResult == "loser" -> homeFromLoser?.let { match.options.find { o -> o.id == it } }
         homeFromWinner != null -> match.options.find { it.id == homeFromWinner }
-        fifaDefined -> match.options.firstOrNull()
+        match.homeTeam != null -> match.homeTeam
         else -> null
     }
     val resolvedAway: Team? = when {
+        match.awayFromResult == "loser" -> awayFromLoser?.let { match.options.find { o -> o.id == it } }
         awayFromWinner != null -> match.options.find { it.id == awayFromWinner }
-        fifaDefined -> match.options.getOrNull(1)
+        match.awayTeam != null -> match.awayTeam
         else -> null
     }
 
-    val homeName = resolvedHome?.name ?: match.homeSlot
-    val awayName = resolvedAway?.name ?: match.awaySlot
+    val homeName = resolvedHome?.name ?: placeholderSlot(match.homeSlot)
+    val awayName = resolvedAway?.name ?: placeholderSlot(match.awaySlot)
     val homePlaceholder = resolvedHome == null
     val awayPlaceholder = resolvedAway == null
 
     val selectOptions = when {
-        fifaDefined && match.homeFromMatchId == null -> match.options
+        match.homeTeam != null && match.awayTeam != null && match.homeFromMatchId == null ->
+            listOf(match.homeTeam!!, match.awayTeam!!)
         resolvedHome != null && resolvedAway != null -> listOf(resolvedHome, resolvedAway)
-        resolvedHome != null -> listOf(resolvedHome)
-        resolvedAway != null -> listOf(resolvedAway)
         else -> match.options
     }
+
+    val canSelect = canSelectWinner(match, winners, losers)
 
     Div(attrs = { classes("ko-card") }) {
         Span(attrs = { classes("ko-card-label") }) { Text(match.label) }
@@ -445,7 +922,18 @@ fun KnockoutMatchCard(
         }
         Div(attrs = { classes("ko-winner") }) {
             Text("Ganador: ")
-            InlineTeamSelect(selectOptions, "winner-${match.id}", winner) { onWinnerChange(match.id, it) }
+            InlineTeamSelect(
+                teams = selectOptions,
+                elementId = "winner-${match.id}",
+                value = winner,
+                onValueChange = { onWinnerChange(match.id, it) },
+                disabled = !canSelect,
+            )
+            if (!canSelect) {
+                Span(attrs = { classes("ko-winner-hint") }) {
+                    Text("Llena las rondas anteriores")
+                }
+            }
         }
     }
 }
@@ -453,14 +941,21 @@ fun KnockoutMatchCard(
 
 
 @Composable
-fun InlineTeamSelect(teams: List<Team>, elementId: String = "", value: String = "", onValueChange: (String) -> Unit = {}) {
+fun InlineTeamSelect(
+    teams: List<Team>,
+    elementId: String = "",
+    value: String = "",
+    onValueChange: (String) -> Unit = {},
+    disabled: Boolean = false,
+) {
     Select(attrs = {
         classes("input", "compact-select")
         if (elementId.isNotEmpty()) id(elementId)
+        if (disabled) attr("disabled", "disabled")
         attr("value", value)
         onInput { e -> onValueChange(e.target.value) }
     }) {
-        Option(value = "", attrs = { if (value.isEmpty()) attr("selected", "selected") }) { Text("Elige") }
+        Option(value = "", attrs = { if (value.isEmpty()) attr("selected", "selected") }) { Text(if (disabled) "Bloqueado" else "Elige") }
         teams.forEach { team -> Option(value = team.id, attrs = { if (team.id == value) attr("selected", "selected") }) { Text(team.name) } }
     }
 }

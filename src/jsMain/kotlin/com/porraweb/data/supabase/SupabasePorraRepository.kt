@@ -325,37 +325,58 @@ private data class DbMatch(
         val home = teamFrom(homeTeamId, homeSlot, teamsById, "home")
         val away = teamFrom(awayTeamId, awaySlot, teamsById, "away")
         val mn = matchNumber
-        val (homeFrom, awayFrom) = bracketSources(mn, matchNumToId)
+        val sources = parseBracketSources(homeSlot, awaySlot, matchNumToId)
         return KnockoutMatch(
             id = id,
             phase = phase,
             label = "Partido ${mn ?: ""}",
             homeSlot = home.name,
             awaySlot = away.name,
-            options = if (homeTeamId != null && awayTeamId != null) listOf(home, away) else teams,
+            options = teams,
             matchNumber = mn,
-            homeFromMatchId = homeFrom,
-            awayFromMatchId = awayFrom,
+            homeFromMatchId = sources.homeMatchId,
+            awayFromMatchId = sources.awayMatchId,
+            homeFromResult = sources.homeResult,
+            awayFromResult = sources.awayResult,
+            homeTeam = if (homeTeamId != null) home else null,
+            awayTeam = if (awayTeamId != null) away else null,
         )
     }
 
-    private fun bracketSources(matchNum: Int?, matchNumToId: Map<Int, String>): Pair<String?, String?> {
-        if (matchNum == null) return null to null
-        return when (matchNum) {
-            in 89..96 -> {
-                val base = (matchNum - 89) * 2 + 73
-                matchNumToId[base] to matchNumToId[base + 1]
-            }
-            in 97..100 -> {
-                val base = (matchNum - 97) * 2 + 89
-                matchNumToId[base] to matchNumToId[base + 1]
-            }
-            101 -> matchNumToId[97] to matchNumToId[98]
-            102 -> matchNumToId[99] to matchNumToId[100]
-            103 -> matchNumToId[101] to matchNumToId[102]
-            104 -> matchNumToId[101] to matchNumToId[102]
-            else -> null to null
+    private data class BracketSources(
+        val homeMatchId: String?,
+        val homeResult: String?,
+        val awayMatchId: String?,
+        val awayResult: String?,
+    )
+
+    private fun parseBracketSources(homeSlot: String?, awaySlot: String?, matchNumToId: Map<Int, String>): BracketSources {
+        val home = parseSlotSource(homeSlot, matchNumToId)
+        val away = parseSlotSource(awaySlot, matchNumToId)
+        return BracketSources(
+            homeMatchId = home.first,
+            homeResult = home.second,
+            awayMatchId = away.first,
+            awayResult = away.second,
+        )
+    }
+
+    private fun parseSlotSource(slot: String?, matchNumToId: Map<Int, String>): Pair<String?, String?> {
+        if (slot == null) return null to null
+        val trimmed = slot.trim()
+        val winnerRe = Regex("^W(\\d+)\$")
+        val winnerMatch = winnerRe.find(trimmed)
+        if (winnerMatch != null) {
+            val matchNum = winnerMatch.groupValues[1].toIntOrNull()
+            return matchNumToId[matchNum] to "winner"
         }
+        val loserRe = Regex("^RU(\\d+)\$")
+        val loserMatch = loserRe.find(trimmed)
+        if (loserMatch != null) {
+            val matchNum = loserMatch.groupValues[1].toIntOrNull()
+            return matchNumToId[matchNum] to "loser"
+        }
+        return null to null
     }
 }
 

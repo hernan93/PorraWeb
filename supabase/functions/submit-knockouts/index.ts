@@ -61,21 +61,10 @@ interface MatchInfo {
   away_slot: string | null;
 }
 
-function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
-function slotLabel(slotCode: string, matches: Map<string, MatchInfo>, slotNumber: number): string {
-  const match = matches.get(slotCode);
-  if (match?.match_number) return `Partido ${match.match_number}`;
-  return isUuid(slotCode) ? `Casilla ${slotNumber}` : slotCode;
-}
-
 async function buildKnockoutReceipt(client: SupabaseClient, body: RequestBody): Promise<EmailReceipt> {
-  const teamIds = new Set<string>([
-    ...body.knockout_predictions.map((p) => p.predicted_team_id),
-    ...body.knockout_match_predictions.map((p) => p.predicted_winner_team_id),
-  ]);
+  const teamIds = new Set<string>(
+    body.knockout_match_predictions.map((p) => p.predicted_winner_team_id),
+  );
   const matchIds = body.knockout_match_predictions.map((p) => p.match_id);
 
   const matchesResult = await client
@@ -102,32 +91,6 @@ async function buildKnockoutReceipt(client: SupabaseClient, body: RequestBody): 
     matches.set(match.id, match);
   }
 
-  const phaseOrder = Object.keys(PHASE_REQUIRED_COUNTS);
-  const orderedBracket = [...body.knockout_predictions].sort((a, b) => {
-    const phaseDiff = phaseOrder.indexOf(a.phase) - phaseOrder.indexOf(b.phase);
-    const matchA = matches.get(a.slot_code)?.match_number ?? 999;
-    const matchB = matches.get(b.slot_code)?.match_number ?? 999;
-    return phaseDiff !== 0 ? phaseDiff : matchA - matchB || a.slot_code.localeCompare(b.slot_code);
-  });
-
-  const phaseSlotCounts = new Map<string, number>();
-  const bracketItems = orderedBracket.map((prediction) => {
-    const slotNumber = (phaseSlotCounts.get(prediction.phase) ?? 0) + 1;
-    phaseSlotCounts.set(prediction.phase, slotNumber);
-    return {
-      prediction,
-      slot: slotLabel(prediction.slot_code, matches, slotNumber),
-    };
-  });
-
-  const bracketTextLines = bracketItems.map(({ prediction, slot }) => {
-    return `${PHASE_LABELS[prediction.phase] ?? prediction.phase} - ${slot}: ${teamName(prediction.predicted_team_id, teams)}`;
-  });
-
-  const bracketRows = bracketItems.map(({ prediction, slot }) => {
-    return `<tr><td>${escapeHtml(PHASE_LABELS[prediction.phase] ?? prediction.phase)}</td><td>${escapeHtml(slot)}</td><td>${escapeHtml(teamName(prediction.predicted_team_id, teams))}</td></tr>`;
-  }).join("");
-
   const orderedMatches = [...body.knockout_match_predictions].sort((a, b) => {
     return (matches.get(a.match_id)?.match_number ?? 999) - (matches.get(b.match_id)?.match_number ?? 999);
   });
@@ -138,8 +101,8 @@ async function buildKnockoutReceipt(client: SupabaseClient, body: RequestBody): 
     const away = teamName(match?.away_team_id, teams, match?.away_slot ?? "Por definir");
     const winner = teamName(prediction.predicted_winner_team_id, teams);
     const number = match?.match_number ? `Partido ${match.match_number}` : "Partido";
-    const phase = match?.phase ? ` - ${PHASE_LABELS[match.phase] ?? match.phase}` : "";
-    return `${number}${phase}: ${home} ${prediction.home_goals} - ${prediction.away_goals} ${away}. Ganador: ${winner}`;
+    const phase = match?.phase ? PHASE_LABELS[match.phase] ?? match.phase : "";
+    return `${number} - ${phase}: ${home} ${prediction.home_goals} - ${prediction.away_goals} ${away}. Avanza: ${winner}`;
   });
 
   const matchRows = orderedMatches.map((prediction) => {
@@ -147,29 +110,33 @@ async function buildKnockoutReceipt(client: SupabaseClient, body: RequestBody): 
     const home = teamName(match?.home_team_id, teams, match?.home_slot ?? "Por definir");
     const away = teamName(match?.away_team_id, teams, match?.away_slot ?? "Por definir");
     const winner = teamName(prediction.predicted_winner_team_id, teams);
-    return `<tr><td>${escapeHtml(match?.match_number?.toString() ?? "-")}</td><td>${escapeHtml(PHASE_LABELS[match?.phase ?? ""] ?? match?.phase ?? "")}</td><td>${escapeHtml(home)}</td><td>${prediction.home_goals} - ${prediction.away_goals}</td><td>${escapeHtml(away)}</td><td>${escapeHtml(winner)}</td></tr>`;
+    return `<tr>` +
+      `<td>${escapeHtml(match?.match_number?.toString() ?? "-")}</td>` +
+      `<td>${escapeHtml(PHASE_LABELS[match?.phase ?? ""] ?? match?.phase ?? "")}</td>` +
+      `<td>${escapeHtml(home)}</td>` +
+      `<td>${prediction.home_goals} - ${prediction.away_goals}</td>` +
+      `<td>${escapeHtml(away)}</td>` +
+      `<td>${escapeHtml(winner)}</td>` +
+      `</tr>`;
   }).join("");
 
   const html = `
-    <h3>Clasificados y posiciones de eliminatorias</h3>
-    <table>
-      <thead><tr><th>Ronda</th><th>Casilla</th><th>Equipo elegido</th></tr></thead>
-      <tbody>${bracketRows}</tbody>
-    </table>
-    <h3>Marcadores de eliminatorias</h3>
-    <table>
-      <thead><tr><th>Partido</th><th>Ronda</th><th>Local</th><th>Marcador</th><th>Visitante</th><th>Ganador</th></tr></thead>
+    <table style="border-collapse:collapse;width:100%">
+      <thead>
+        <tr style="background:#f1f5f9">
+          <th style="padding:8px;text-align:left;border-bottom:2px solid #e2e8f0">Partido</th>
+          <th style="padding:8px;text-align:left;border-bottom:2px solid #e2e8f0">Ronda</th>
+          <th style="padding:8px;text-align:left;border-bottom:2px solid #e2e8f0">Local</th>
+          <th style="padding:8px;text-align:center;border-bottom:2px solid #e2e8f0">Marcador</th>
+          <th style="padding:8px;text-align:left;border-bottom:2px solid #e2e8f0">Visitante</th>
+          <th style="padding:8px;text-align:left;border-bottom:2px solid #e2e8f0">Avanza</th>
+        </tr>
+      </thead>
       <tbody>${matchRows}</tbody>
     </table>
   `;
 
-  const text = [
-    "Clasificados y posiciones de eliminatorias:",
-    ...bracketTextLines,
-    "",
-    "Marcadores de eliminatorias:",
-    ...matchTextLines,
-  ].join("\n");
+  const text = matchTextLines.join("\n");
 
   return { text, html };
 }

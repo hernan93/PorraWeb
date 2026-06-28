@@ -17,6 +17,7 @@ import com.porraweb.presentation.components.KnockoutPredictionTable
 import com.porraweb.presentation.components.PageHeader
 import com.porraweb.presentation.components.Panel
 import com.porraweb.presentation.components.TextField
+import org.jetbrains.compose.web.dom.H2
 import kotlinx.browser.document
 import kotlinx.browser.window
 import kotlinx.coroutines.MainScope
@@ -148,7 +149,8 @@ fun KnockoutPredictionsScreen(repository: PorraRepository, config: SupabaseConfi
         }
     }
 
-    Panel(title = "Ronda de 32, octavos, cuartos, semifinales y finales") {
+    Div(attrs = { classes("bracket-panel") }) {
+        H2 { Text("Ronda de 32, octavos, cuartos, semifinales y finales") }
         KnockoutPredictionTable(
             matches = repository.knockoutMatches(),
             homeScores = PredictionDrafts.knockoutHomeScores,
@@ -164,6 +166,18 @@ fun KnockoutPredictionsScreen(repository: PorraRepository, config: SupabaseConfi
         }
 
         Div(attrs = { classes("form-actions") }) {
+            Button(attrs = {
+                classes("button", "button-secondary")
+                onClick {
+                    PredictionDrafts.knockoutHomeScores.clear()
+                    PredictionDrafts.knockoutAwayScores.clear()
+                    PredictionDrafts.knockoutWinners.clear()
+                    message = "Predicciones limpiadas. Vuelve a llenar en orden desde la ronda de 32."
+                    messageError = false
+                }
+            }) {
+                Text("Limpiar predicciones")
+            }
             Button(attrs = {
                 classes("button", "button-primary")
                 if (submitting) attr("disabled", "disabled")

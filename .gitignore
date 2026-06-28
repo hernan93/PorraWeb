@@ -15,3 +15,7 @@ yarn-error.log*
 
 .vercel/
 supabase/.temp/
+
+.atl/
+~$*.xlsx
+~$*.xls
