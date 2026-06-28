@@ -167,18 +167,6 @@ fun KnockoutPredictionsScreen(repository: PorraRepository, config: SupabaseConfi
 
         Div(attrs = { classes("form-actions") }) {
             Button(attrs = {
-                classes("button", "button-secondary")
-                onClick {
-                    PredictionDrafts.knockoutHomeScores.clear()
-                    PredictionDrafts.knockoutAwayScores.clear()
-                    PredictionDrafts.knockoutWinners.clear()
-                    message = "Predicciones limpiadas. Vuelve a llenar en orden desde la ronda de 32."
-                    messageError = false
-                }
-            }) {
-                Text("Limpiar predicciones")
-            }
-            Button(attrs = {
                 classes("button", "button-primary")
                 if (submitting) attr("disabled", "disabled")
                 onClick {

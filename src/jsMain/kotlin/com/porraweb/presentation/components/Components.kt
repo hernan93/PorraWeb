@@ -743,7 +743,10 @@ private fun bracketMatchCard(
         match.homeTeam != null && match.awayTeam != null && match.homeFromMatchId == null ->
             listOf(match.homeTeam!!, match.awayTeam!!)
         resolvedHome != null && resolvedAway != null -> listOf(resolvedHome, resolvedAway)
-        else -> match.options
+        resolvedHome != null -> listOf(resolvedHome)
+        resolvedAway != null -> listOf(resolvedAway)
+        match.homeFromMatchId == null -> match.options
+        else -> emptyList()
     }
 
     val canSelect = canSelectWinner(match, winners, losers)
@@ -890,7 +893,10 @@ private fun legacyKnockoutTable(
         match.homeTeam != null && match.awayTeam != null && match.homeFromMatchId == null ->
             listOf(match.homeTeam!!, match.awayTeam!!)
         resolvedHome != null && resolvedAway != null -> listOf(resolvedHome, resolvedAway)
-        else -> match.options
+        resolvedHome != null -> listOf(resolvedHome)
+        resolvedAway != null -> listOf(resolvedAway)
+        match.homeFromMatchId == null -> match.options
+        else -> emptyList()
     }
 
     val canSelect = canSelectWinner(match, winners, losers)
