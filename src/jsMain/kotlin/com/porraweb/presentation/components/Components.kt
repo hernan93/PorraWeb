@@ -361,7 +361,11 @@ fun KnockoutPredictionTable(
     onAwayScoreChange: (String, String) -> Unit = { _, _ -> },
     onWinnerChange: (String, String) -> Unit = { _, _ -> },
 ) {
-    val losers = remember(matches, winners) { computeKnockoutLosers(matches, winners) }
+    // NO usar remember(winners): winners es un SnapshotStateMap (misma instancia siempre),
+    // asi que la key nunca "cambia" y el bloque se congelaria con winners vacio.
+    // Llamar directo hace que los reads de winners[...] registren este composable como
+    // observador -> recompone y recomputa losers cuando cambian los ganadores en cascada.
+    val losers = computeKnockoutLosers(matches, winners)
     val sortedByBracket = remember(matches) { sortMatchesByBracketTree(matches) }
     val matchesByPhase = sortedByBracket.groupBy { it.phase }
     val r32 = matchesByPhase["round_32"] ?: emptyList()
