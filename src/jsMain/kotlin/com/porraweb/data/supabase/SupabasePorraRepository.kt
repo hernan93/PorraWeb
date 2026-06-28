@@ -187,12 +187,14 @@ class SupabasePorraRepository(private val config: SupabaseConfig) : PorraReposit
         val awayScores = mutableMapOf<String, String>()
         for (row in rows) {
             val matchId = text(row.match_id) ?: continue
-            val winnerId = text(row.winner_team_id) ?: continue
-            winners[matchId] = winnerId
+            // Marcador: se muestra aunque el partido esté en juego (todavía sin ganador).
             val homeGoals = intOrNull(row.home_goals)
             val awayGoals = intOrNull(row.away_goals)
             if (homeGoals != null) homeScores[matchId] = homeGoals.toString()
             if (awayGoals != null) awayScores[matchId] = awayGoals.toString()
+            // Ganador: solo cuando el partido terminó. Hasta entonces la cascada no avanza de ronda.
+            val winnerId = text(row.winner_team_id)
+            if (winnerId != null) winners[matchId] = winnerId
         }
         return RealResults(winners, homeScores, awayScores)
     }
