@@ -1176,3 +1176,44 @@ body {
         padding: 4px 6px;
     }
 }
+
+/* Tab bar */
+.tab-bar {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.tab-btn {
+    padding: 9px 20px;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: #526173;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.tab-btn:hover,
+.tab-btn.active {
+    background: #e7f8f5;
+    color: #0f766e;
+}
+
+/* Read-only bracket display */
+.bracket-score-ro {
+    font-size: 14px;
+    font-weight: 800;
+    color: #07142d;
+    text-align: center;
+    padding: 2px 0;
+    letter-spacing: 0.04em;
+}
+
+.bracket-winner-ro {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f766e;
+}

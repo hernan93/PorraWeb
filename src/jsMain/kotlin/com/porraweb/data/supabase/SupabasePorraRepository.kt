@@ -53,6 +53,12 @@ class SupabasePorraRepository(private val config: SupabaseConfig) : PorraReposit
 
     override fun latestResults(): List<MatchResult> = state.latestResults
 
+    override fun realWinners(): Map<String, String> = state.realWinners
+
+    override fun realHomeScores(): Map<String, String> = state.realHomeScores
+
+    override fun realAwayScores(): Map<String, String> = state.realAwayScores
+
     override fun pendingParticipants(): List<PaymentParticipant> = MockPorraRepository.pendingParticipants()
 
     override fun adminSettings(): AdminSettings = MockPorraRepository.adminSettings()
@@ -65,11 +71,16 @@ class SupabasePorraRepository(private val config: SupabaseConfig) : PorraReposit
 
                 val rankingDeferred = scope.async { loadRanking() }
                 val resultsDeferred = scope.async { loadLatestResults() }
+                val realResultsDeferred = scope.async { loadRealResults() }
 
+                val realResults = realResultsDeferred.await()
                 state = state.copy(
                     dashboardSummary = dashboardSummary,
                     ranking = rankingDeferred.await(),
                     latestResults = resultsDeferred.await(),
+                    realWinners = realResults.winners,
+                    realHomeScores = realResults.homeScores,
+                    realAwayScores = realResults.awayScores,
                 )
             }.onFailure { error -> println("Supabase refresh failed: ${error.message}") }
         }
@@ -80,6 +91,7 @@ class SupabasePorraRepository(private val config: SupabaseConfig) : PorraReposit
         val groupRowsDeferred = async { fetchRows("tournament_groups?select=id,code,name&order=code.asc") }
         val groupTeamsDeferred = async { fetchRows("group_teams?select=group_id,team_id") }
         val matchesDeferred = async { fetchRows("matches?select=id,match_number,phase,group_id,home_team_id,away_team_id,home_slot,away_slot,status&order=match_number.asc") }
+        val matchResultsDeferred = async { fetchRows("match_results?select=match_id,home_goals,away_goals,winner_team_id") }
         val dashboardDeferred = async { loadDashboardSummary() }
         val rankingDeferred = async { loadRanking() }
         val resultsDeferred = async { loadLatestResults() }
@@ -145,6 +157,8 @@ class SupabasePorraRepository(private val config: SupabaseConfig) : PorraReposit
             )
         }
 
+        val realResults = buildRealResults(matchResultsDeferred.await())
+
         state = state.copy(
             teams = teams,
             groups = groups,
@@ -158,7 +172,29 @@ class SupabasePorraRepository(private val config: SupabaseConfig) : PorraReposit
             dashboardSummary = dashboardDeferred.await(),
             ranking = rankingDeferred.await(),
             latestResults = resultsDeferred.await(),
+            realWinners = realResults.winners,
+            realHomeScores = realResults.homeScores,
+            realAwayScores = realResults.awayScores,
         )
+    }
+
+    private suspend fun loadRealResults(): RealResults =
+        buildRealResults(fetchRows("match_results?select=match_id,home_goals,away_goals,winner_team_id"))
+
+    private fun buildRealResults(rows: List<dynamic>): RealResults {
+        val winners = mutableMapOf<String, String>()
+        val homeScores = mutableMapOf<String, String>()
+        val awayScores = mutableMapOf<String, String>()
+        for (row in rows) {
+            val matchId = text(row.match_id) ?: continue
+            val winnerId = text(row.winner_team_id) ?: continue
+            winners[matchId] = winnerId
+            val homeGoals = intOrNull(row.home_goals)
+            val awayGoals = intOrNull(row.away_goals)
+            if (homeGoals != null) homeScores[matchId] = homeGoals.toString()
+            if (awayGoals != null) awayScores[matchId] = awayGoals.toString()
+        }
+        return RealResults(winners, homeScores, awayScores)
     }
 
     private suspend fun loadDashboardSummary(): DashboardSummary {
@@ -268,6 +304,9 @@ private data class RepositoryState(
     val dashboardSummary: DashboardSummary,
     val ranking: List<RankingEntry>,
     val latestResults: List<MatchResult>,
+    val realWinners: Map<String, String>,
+    val realHomeScores: Map<String, String>,
+    val realAwayScores: Map<String, String>,
 ) {
     companion object {
         fun empty(): RepositoryState = RepositoryState(
@@ -282,9 +321,18 @@ private data class RepositoryState(
             ),
             ranking = emptyList(),
             latestResults = emptyList(),
+            realWinners = emptyMap(),
+            realHomeScores = emptyMap(),
+            realAwayScores = emptyMap(),
         )
     }
 }
+
+private data class RealResults(
+    val winners: Map<String, String>,
+    val homeScores: Map<String, String>,
+    val awayScores: Map<String, String>,
+)
 
 private data class DbGroup(
     val id: String,

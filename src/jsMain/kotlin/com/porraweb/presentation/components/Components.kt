@@ -358,6 +358,7 @@ fun KnockoutPredictionTable(
     homeScores: Map<String, String> = emptyMap(),
     awayScores: Map<String, String> = emptyMap(),
     winners: Map<String, String> = emptyMap(),
+    readOnly: Boolean = false,
     onHomeScoreChange: (String, String) -> Unit = { _, _ -> },
     onAwayScoreChange: (String, String) -> Unit = { _, _ -> },
     onWinnerChange: (String, String) -> Unit = { _, _ -> },
@@ -383,13 +384,13 @@ fun KnockoutPredictionTable(
 
     Div(attrs = { classes("bracket-scroll") }) {
         Div(attrs = { classes("bracket-canvas") }) {
-            bracketRound("Ronda de 32", 1, r32, homeScores, awayScores, winners, losers, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
+            bracketRound("Ronda de 32", 1, r32, homeScores, awayScores, winners, losers, readOnly, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
             bracketConnector(1, 2, 8)
-            bracketRound("Octavos de final", 2, r16, homeScores, awayScores, winners, losers, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
+            bracketRound("Octavos de final", 2, r16, homeScores, awayScores, winners, losers, readOnly, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
             bracketConnector(2, 4, 4)
-            bracketRound("Cuartos de final", 4, qf, homeScores, awayScores, winners, losers, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
+            bracketRound("Cuartos de final", 4, qf, homeScores, awayScores, winners, losers, readOnly, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
             bracketConnector(4, 8, 2)
-            bracketRound("Semifinales", 8, sf, homeScores, awayScores, winners, losers, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
+            bracketRound("Semifinales", 8, sf, homeScores, awayScores, winners, losers, readOnly, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
 
             Div(attrs = {
                 classes("bracket-connector")
@@ -433,7 +434,7 @@ fun KnockoutPredictionTable(
                     }) {
                         Span(attrs = { style { property("font-size", "10px"); property("font-weight", "700"); property("color", "#64748b"); property("text-transform", "uppercase") } }) { Text("1er y 2do puesto") }
                         finalMatch?.let { m ->
-                            bracketMatchCard(m, homeScores, awayScores, winners, losers, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
+                            bracketMatchCard(m, homeScores, awayScores, winners, losers, readOnly, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
                         }
                     }
                     Div(attrs = {
@@ -448,7 +449,7 @@ fun KnockoutPredictionTable(
                     }) {
                         Span(attrs = { style { property("font-size", "10px"); property("font-weight", "700"); property("color", "#64748b"); property("text-transform", "uppercase") } }) { Text("3er puesto") }
                         thirdMatch?.let { m ->
-                            bracketMatchCard(m, homeScores, awayScores, winners, losers, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
+                            bracketMatchCard(m, homeScores, awayScores, winners, losers, readOnly, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
                         }
                     }
                 }
@@ -466,6 +467,7 @@ private fun bracketRound(
     awayScores: Map<String, String>,
     winners: Map<String, String>,
     losers: Map<String, String>,
+    readOnly: Boolean = false,
     onHomeScoreChange: (String, String) -> Unit,
     onAwayScoreChange: (String, String) -> Unit,
     onWinnerChange: (String, String) -> Unit,
@@ -504,7 +506,7 @@ private fun bracketRound(
                         property("justify-content", "center")
                     }
                 }) {
-                    bracketMatchCard(match, homeScores, awayScores, winners, losers, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
+                    bracketMatchCard(match, homeScores, awayScores, winners, losers, readOnly, onHomeScoreChange, onAwayScoreChange, onWinnerChange)
                 }
             }
         }
@@ -717,9 +719,10 @@ private fun bracketMatchCard(
     awayScores: Map<String, String>,
     winners: Map<String, String>,
     losers: Map<String, String>,
-    onHomeScoreChange: (String, String) -> Unit,
-    onAwayScoreChange: (String, String) -> Unit,
-    onWinnerChange: (String, String) -> Unit,
+    readOnly: Boolean = false,
+    onHomeScoreChange: (String, String) -> Unit = { _, _ -> },
+    onAwayScoreChange: (String, String) -> Unit = { _, _ -> },
+    onWinnerChange: (String, String) -> Unit = { _, _ -> },
 ) {
     val homeFromWinner = match.homeFromMatchId?.let { winners[it] }
     val awayFromWinner = match.awayFromMatchId?.let { winners[it] }
@@ -769,39 +772,73 @@ private fun bracketMatchCard(
     Div(attrs = { classes("bracket-card") }) {
         Span(attrs = { classes("bracket-card-label") }) { Text(match.label) }
 
-        Div(attrs = { classes("bracket-teams") }) {
-            Div(attrs = { classes("bracket-team") }) {
-                if (resolvedHome?.fifaCode != null) {
-                    Img(src = flagSrc(resolvedHome.fifaCode!!), attrs = { classes("bracket-flag") })
-                }
-                Span(attrs = {
-                    if (homePlaceholder) classes("bracket-team-ph") else classes("bracket-team-name")
-                }) { Text(homeName) }
-                NumberInput("score-home-${match.id}", homeScores[match.id].orEmpty()) { onHomeScoreChange(match.id, it) }
-            }
-            Div(attrs = { classes("bracket-team") }) {
-                if (resolvedAway?.fifaCode != null) {
-                    Img(src = flagSrc(resolvedAway.fifaCode!!), attrs = { classes("bracket-flag") })
-                }
-                Span(attrs = {
-                    if (awayPlaceholder) classes("bracket-team-ph") else classes("bracket-team-name")
-                }) { Text(awayName) }
-                NumberInput("score-away-${match.id}", awayScores[match.id].orEmpty()) { onAwayScoreChange(match.id, it) }
-            }
-        }
+        if (readOnly) {
+            val homeGoals = homeScores[match.id]
+            val awayGoals = awayScores[match.id]
+            val scoreText = if (homeGoals != null && awayGoals != null) "$homeGoals - $awayGoals" else "-"
+            val winnerTeamName = winners[match.id]?.let { wId -> selectOptions.find { it.id == wId }?.name }
 
-        Div(attrs = { classes("bracket-winner") }) {
-            Span(attrs = { classes("bracket-winner-label") }) { Text("Ganador") }
-            InlineTeamSelect(
-                teams = selectOptions,
-                elementId = "winner-${match.id}",
-                value = winners[match.id].orEmpty(),
-                onValueChange = { onWinnerChange(match.id, it) },
-                disabled = !canSelect,
-            )
-            if (!canSelect) {
-                Span(attrs = { classes("bracket-winner-hint") }) {
-                    Text("Llena las rondas anteriores")
+            Div(attrs = { classes("bracket-teams") }) {
+                Div(attrs = { classes("bracket-team") }) {
+                    if (resolvedHome?.fifaCode != null) {
+                        Img(src = flagSrc(resolvedHome.fifaCode!!), attrs = { classes("bracket-flag") })
+                    }
+                    Span(attrs = {
+                        if (homePlaceholder) classes("bracket-team-ph") else classes("bracket-team-name")
+                    }) { Text(homeName) }
+                }
+                Span(attrs = { classes("bracket-score-ro") }) { Text(scoreText) }
+                Div(attrs = { classes("bracket-team") }) {
+                    if (resolvedAway?.fifaCode != null) {
+                        Img(src = flagSrc(resolvedAway.fifaCode!!), attrs = { classes("bracket-flag") })
+                    }
+                    Span(attrs = {
+                        if (awayPlaceholder) classes("bracket-team-ph") else classes("bracket-team-name")
+                    }) { Text(awayName) }
+                }
+            }
+
+            Div(attrs = { classes("bracket-winner") }) {
+                Span(attrs = { classes("bracket-winner-label") }) { Text("Ganador") }
+                Span(attrs = { classes("bracket-winner-ro") }) {
+                    Text(winnerTeamName ?: "Por definir")
+                }
+            }
+        } else {
+            Div(attrs = { classes("bracket-teams") }) {
+                Div(attrs = { classes("bracket-team") }) {
+                    if (resolvedHome?.fifaCode != null) {
+                        Img(src = flagSrc(resolvedHome.fifaCode!!), attrs = { classes("bracket-flag") })
+                    }
+                    Span(attrs = {
+                        if (homePlaceholder) classes("bracket-team-ph") else classes("bracket-team-name")
+                    }) { Text(homeName) }
+                    NumberInput("score-home-${match.id}", homeScores[match.id].orEmpty()) { onHomeScoreChange(match.id, it) }
+                }
+                Div(attrs = { classes("bracket-team") }) {
+                    if (resolvedAway?.fifaCode != null) {
+                        Img(src = flagSrc(resolvedAway.fifaCode!!), attrs = { classes("bracket-flag") })
+                    }
+                    Span(attrs = {
+                        if (awayPlaceholder) classes("bracket-team-ph") else classes("bracket-team-name")
+                    }) { Text(awayName) }
+                    NumberInput("score-away-${match.id}", awayScores[match.id].orEmpty()) { onAwayScoreChange(match.id, it) }
+                }
+            }
+
+            Div(attrs = { classes("bracket-winner") }) {
+                Span(attrs = { classes("bracket-winner-label") }) { Text("Ganador") }
+                InlineTeamSelect(
+                    teams = selectOptions,
+                    elementId = "winner-${match.id}",
+                    value = winners[match.id].orEmpty(),
+                    onValueChange = { onWinnerChange(match.id, it) },
+                    disabled = !canSelect,
+                )
+                if (!canSelect) {
+                    Span(attrs = { classes("bracket-winner-hint") }) {
+                        Text("Llena las rondas anteriores")
+                    }
                 }
             }
         }

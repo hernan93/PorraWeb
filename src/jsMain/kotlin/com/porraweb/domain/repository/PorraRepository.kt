@@ -24,5 +24,8 @@ interface PorraRepository {
     fun latestResults(): List<MatchResult>
     fun pendingParticipants(): List<PaymentParticipant>
     fun adminSettings(): AdminSettings
+    fun realWinners(): Map<String, String> = emptyMap()
+    fun realHomeScores(): Map<String, String> = emptyMap()
+    fun realAwayScores(): Map<String, String> = emptyMap()
     fun refresh() {}
 }
