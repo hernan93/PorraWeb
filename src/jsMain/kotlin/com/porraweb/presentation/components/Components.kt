@@ -1,6 +1,7 @@
 package com.porraweb.presentation.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import com.porraweb.domain.model.AdminSettings
@@ -755,6 +756,16 @@ private fun bracketMatchCard(
 
     val canSelect = canSelectWinner(match, winners, losers)
 
+    // Si el ganador guardado dejo de ser una opcion valida (porque cambio una ronda
+    // anterior de la cascada), limpialo para que el dropdown no quede con una
+    // seleccion obsoleta. El clear propaga rio abajo y converge solo.
+    val currentWinner = winners[match.id].orEmpty()
+    LaunchedEffect(selectOptions.map { it.id }, currentWinner) {
+        if (currentWinner.isNotEmpty() && selectOptions.none { it.id == currentWinner }) {
+            onWinnerChange(match.id, "")
+        }
+    }
+
     Div(attrs = { classes("bracket-card") }) {
         Span(attrs = { classes("bracket-card-label") }) { Text(match.label) }
 
@@ -904,6 +915,12 @@ private fun legacyKnockoutTable(
     }
 
     val canSelect = canSelectWinner(match, winners, losers)
+
+    LaunchedEffect(selectOptions.map { it.id }, winner) {
+        if (winner.isNotEmpty() && selectOptions.none { it.id == winner }) {
+            onWinnerChange(match.id, "")
+        }
+    }
 
     Div(attrs = { classes("ko-card") }) {
         Span(attrs = { classes("ko-card-label") }) { Text(match.label) }
