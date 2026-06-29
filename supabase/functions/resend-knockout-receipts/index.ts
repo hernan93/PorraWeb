@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   buildKnockoutReceipt,
   KnockoutMatchPredictionInput,
+  sendAdminCopyOnly,
   sendConfirmationEmail,
 } from "../_shared/knockout-receipt.ts";
 
@@ -38,6 +39,7 @@ interface ResendRequestBody {
   dry_run?: boolean;
   only_emails?: string[];
   limit?: number;
+  admin_only?: boolean;
 }
 
 interface ParticipantRow {
@@ -87,6 +89,7 @@ Deno.serve(async (req: Request) => {
       ? new Set(raw.only_emails.map((e) => e.toLowerCase().trim()))
       : null;
     const limit = typeof raw.limit === "number" && raw.limit > 0 ? Math.floor(raw.limit) : null;
+    const adminOnly = raw.admin_only === true;
 
     const supabase = createClient(getEnv("SUPABASE_URL"), supabaseSecretKey());
 
@@ -194,7 +197,12 @@ Deno.serve(async (req: Request) => {
     for (const t of limited) {
       try {
         const receipt = await buildKnockoutReceipt(supabase, t.predictions);
-        await sendConfirmationEmail(supabase, t.participantId, t.name, t.email, receipt);
+        if (adminOnly) {
+          // Solo repone la copia al admin; no vuelve a notificar al participante.
+          await sendAdminCopyOnly(supabase, t.participantId, t.name, t.email, receipt);
+        } else {
+          await sendConfirmationEmail(supabase, t.participantId, t.name, t.email, receipt);
+        }
         sent++;
         results.push({ email: t.email, status: "sent" });
       } catch (err) {

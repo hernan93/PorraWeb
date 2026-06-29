@@ -301,3 +301,36 @@ export async function sendConfirmationEmail(
     await sendEmailWithLog(client, apiKey, participantId, from, adminReceiptEmail, adminSubject, adminText, adminHtml, "knockouts_submission_admin_copy");
   }
 }
+
+/**
+ * Envía SOLO la copia al admin del resguardo de un participante (NO envía nada al
+ * participante). Sirve para reponer copias admin que quedaron pendientes (p.ej. por
+ * límite de cuota del proveedor) sin volver a notificar a los participantes.
+ */
+export async function sendAdminCopyOnly(
+  client: SupabaseClient,
+  participantId: string,
+  name: string,
+  email: string,
+  receipt: EmailReceipt,
+): Promise<void> {
+  const template = "knockouts_submission_admin_copy";
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  if (!apiKey) {
+    await logEmail(client, participantId, email, template, "failed", undefined, "Missing RESEND_API_KEY");
+    return;
+  }
+
+  const safeName = escapeHtml(name);
+  const from = Deno.env.get("RESEND_FROM_EMAIL") ?? "PorraWeb <onboarding@resend.dev>";
+  const adminReceiptEmail = Deno.env.get("ADMIN_RECEIPT_EMAIL") ?? "hernancit1993@gmail.com";
+  const adminSubject = "Copia admin - Confirmacion de prediccion de eliminatorias - PorraWeb";
+  const adminText = `Resguardo admin de prediccion enviada por ${name} <${email}>.\n\n${receipt.text}`;
+  const adminHtml = `
+    <p><strong>Resguardo admin de prediccion enviada.</strong></p>
+    <p>Participante: ${safeName} &lt;${escapeHtml(email)}&gt;</p>
+    ${receipt.html}
+  `;
+
+  await sendEmailWithLog(client, apiKey, participantId, from, adminReceiptEmail, adminSubject, adminText, adminHtml, template);
+}
