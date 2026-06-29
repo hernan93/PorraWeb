@@ -19,3 +19,5 @@ supabase/.temp/
 .atl/
 ~$*.xlsx
 ~$*.xls
+.vercel
+.env*
